@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RPG Habit Tracker</string>
+    
+    <!-- Authentication -->
+    <string name="login">Prijava</string>
+    <string name="register">Registracija</string>
+    <string name="email">Email adresa</string>
+    <string name="password">Lozinka</string>
+    <string name="confirm_password">Potvrdite lozinku</string>
+    <string name="username">Korisničko ime</string>
+    <string name="choose_avatar">Izaberite avatara</string>
+    <string name="sign_in">Prijavite se</string>
+    <string name="sign_up">Registrujte se</string>
+    <string name="logout">Odjava</string>
+    <string name="forgot_password">Zaboravili ste lozinku?</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">Početna</string>
+    <string name="nav_tasks">Zadaci</string>
+    <string name="nav_profile">Profil</string>
+    <string name="nav_statistics">Statistika</string>
+    <string name="nav_battle">Borba</string>
+    <string name="nav_shop">Prodavnica</string>
+    <string name="nav_friends">Prijatelji</string>
+    
+    <!-- Profile -->
+    <string name="level">Nivo</string>
+    <string name="title">Titula</string>
+    <string name="xp">XP</string>
+    <string name="pp">PP</string>
+    <string name="coins">Novčići</string>
+    <string name="badges">Bedževi</string>
+    <string name="equipment">Oprema</string>
+    
+    <!-- Tasks -->
+    <string name="create_task">Kreiraj zadatak</string>
+    <string name="task_name">Naziv zadatka</string>
+    <string name="task_description">Opis (opciono)</string>
+    <string name="category">Kategorija</string>
+    <string name="difficulty">Težina</string>
+    <string name="importance">Bitnost</string>
+    <string name="recurring">Ponavljajući</string>
+    <string name="single_task">Jednokratni</string>
+    
+    <!-- Difficulty -->
+    <string name="very_easy">Veoma lak (1 XP)</string>
+    <string name="easy">Lak (3 XP)</string>
+    <string name="hard">Težak (7 XP)</string>
+    <string name="extreme">Ekstremno težak (20 XP)</string>
+    
+    <!-- Importance -->
+    <string name="normal">Normalan (1 XP)</string>
+    <string name="important">Važan (3 XP)</string>
+    <string name="very_important">Ekstremno važan (10 XP)</string>
+    <string name="special">Specijalan (100 XP)</string>
+    
+    <!-- Status -->
+    <string name="active">Aktivan</string>
+    <string name="completed">Urađen</string>
+    <string name="failed">Neurađen</string>
+    <string name="paused">Pauziran</string>
+    <string name="cancelled">Otkazan</string>
+    
+    <!-- Boss Battle -->
+    <string name="boss_battle">Borba sa bosom</string>
+    <string name="attack">Napad</string>
+    <string name="boss_hp">Boss HP</string>
+    <string name="your_pp">Vaša snaga</string>
+    <string name="attempts_left">Preostalo napada: %d/5</string>
+    <string name="success_chance">Šansa za uspeh: %d%%</string>
+    
+    <!-- Common -->
+    <string name="save">Sačuvaj</string>
+    <string name="cancel">Otkaži</string>
+    <string name="delete">Obriši</string>
+    <string name="edit">Izmeni</string>
+    <string name="loading">Učitavanje...</string>
+    <string name="error">Greška</string>
+    <string name="success">Uspeh!</string>
+</resources>

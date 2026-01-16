@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         2026 MODERN COLOR PALETTE - RPG HABIT TRACKER
+         Dark theme with neon accents, inspired by gaming & modern app design
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <!-- ══════════ PRIMARY BRAND COLORS ══════════ -->
+    <!-- Deep purple with electric violet accent -->
+    <color name="md_theme_light_primary">#7C4DFF</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#E8DEFF</color>
+    <color name="md_theme_light_onPrimaryContainer">#21005D</color>
+    
+    <!-- ══════════ SECONDARY COLORS ══════════ -->
+    <!-- Cyan/Teal accent for highlights -->
+    <color name="md_theme_light_secondary">#00BFA5</color>
+    <color name="md_theme_light_onSecondary">#FFFFFF</color>
+    <color name="md_theme_light_secondaryContainer">#A7FFEB</color>
+    <color name="md_theme_light_onSecondaryContainer">#00382E</color>
+    
+    <!-- ══════════ TERTIARY COLORS ══════════ -->
+    <!-- Pink/Magenta for special accents -->
+    <color name="md_theme_light_tertiary">#FF4081</color>
+    <color name="md_theme_light_onTertiary">#FFFFFF</color>
+    <color name="md_theme_light_tertiaryContainer">#FFD8E4</color>
+    <color name="md_theme_light_onTertiaryContainer">#3E001D</color>
+    
+    <!-- ══════════ BACKGROUND COLORS ══════════ -->
+    <!-- Near-black background for modern dark feel -->
+    <color name="md_theme_light_background">#0D0D1A</color>
+    <color name="md_theme_light_onBackground">#EAEAEF</color>
+    
+    <!-- ══════════ SURFACE COLORS ══════════ -->
+    <!-- Elevated surfaces with slight transparency -->
+    <color name="md_theme_light_surface">#1A1A2E</color>
+    <color name="md_theme_light_onSurface">#EAEAEF</color>
+    <color name="md_theme_light_surfaceVariant">#252542</color>
+    <color name="md_theme_light_onSurfaceVariant">#C5C5D3</color>
+    
+    <!-- ══════════ ERROR COLORS ══════════ -->
+    <color name="md_theme_light_error">#FF5252</color>
+    <color name="md_theme_light_onError">#FFFFFF</color>
+    <color name="md_theme_light_errorContainer">#FFD8D8</color>
+    <color name="md_theme_light_onErrorContainer">#410002</color>
+    
+    <!-- ══════════ DARK THEME (True Dark) ══════════ -->
+    <color name="md_theme_dark_primary">#B388FF</color>
+    <color name="md_theme_dark_onPrimary">#21005D</color>
+    <color name="md_theme_dark_primaryContainer">#4527A0</color>
+    <color name="md_theme_dark_onPrimaryContainer">#E8DEFF</color>
+    
+    <color name="md_theme_dark_secondary">#64FFDA</color>
+    <color name="md_theme_dark_onSecondary">#00382E</color>
+    <color name="md_theme_dark_secondaryContainer">#00695C</color>
+    <color name="md_theme_dark_onSecondaryContainer">#A7FFEB</color>
+    
+    <color name="md_theme_dark_tertiary">#FF80AB</color>
+    <color name="md_theme_dark_onTertiary">#3E001D</color>
+    <color name="md_theme_dark_tertiaryContainer">#880E4F</color>
+    <color name="md_theme_dark_onTertiaryContainer">#FFD8E4</color>
+    
+    <color name="md_theme_dark_background">#0D0D1A</color>
+    <color name="md_theme_dark_onBackground">#EAEAEF</color>
+    
+    <color name="md_theme_dark_surface">#1A1A2E</color>
+    <color name="md_theme_dark_onSurface">#EAEAEF</color>
+    <color name="md_theme_dark_surfaceVariant">#252542</color>
+    <color name="md_theme_dark_onSurfaceVariant">#C5C5D3</color>
+    
+    <color name="md_theme_dark_error">#FF5252</color>
+    <color name="md_theme_dark_onError">#690005</color>
+    <color name="md_theme_dark_errorContainer">#93000A</color>
+    <color name="md_theme_dark_onErrorContainer">#FFD8D8</color>
+    
+    <!-- ══════════ GRADIENT COLORS ══════════ -->
+    <color name="gradient_start">#7C4DFF</color>
+    <color name="gradient_center">#536DFE</color>
+    <color name="gradient_end">#00BFA5</color>
+    
+    <color name="gradient_gold_start">#FFD700</color>
+    <color name="gradient_gold_end">#FFA000</color>
+    
+    <color name="gradient_pink_start">#FF4081</color>
+    <color name="gradient_pink_end">#7C4DFF</color>
+    
+    <!-- ══════════ RPG GAME COLORS - NEON STYLE ══════════ -->
+    <color name="rpg_gold">#FFD700</color>
+    <color name="rpg_gold_glow">#FFF176</color>
+    <color name="rpg_silver">#E0E0E0</color>
+    <color name="rpg_bronze">#CD7F32</color>
+    
+    <color name="rpg_health">#FF5252</color>
+    <color name="rpg_health_glow">#FF8A80</color>
+    <color name="rpg_power">#7C4DFF</color>
+    <color name="rpg_power_glow">#B388FF</color>
+    <color name="rpg_xp">#00E676</color>
+    <color name="rpg_xp_glow">#69F0AE</color>
+    <color name="rpg_mana">#448AFF</color>
+    <color name="rpg_mana_glow">#82B1FF</color>
+    
+    <!-- ══════════ STATUS COLORS - VIBRANT ══════════ -->
+    <color name="status_active">#00E676</color>
+    <color name="status_completed">#00B0FF</color>
+    <color name="status_failed">#FF5252</color>
+    <color name="status_paused">#FFAB40</color>
+    <color name="status_cancelled">#78909C</color>
+    
+    <!-- ══════════ DIFFICULTY COLORS ══════════ -->
+    <color name="difficulty_1">#00E676</color>
+    <color name="difficulty_2">#69F0AE</color>
+    <color name="difficulty_3">#FFAB40</color>
+    <color name="difficulty_4">#FF6E40</color>
+    <color name="difficulty_5">#FF5252</color>
+    
+    <!-- ══════════ CARD & COMPONENT COLORS ══════════ -->
+    <color name="card_background">#1F1F38</color>
+    <color name="card_background_elevated">#282850</color>
+    <color name="card_border">#3D3D6B</color>
+    <color name="input_background">#252542</color>
+    <color name="input_stroke">#3D3D6B</color>
+    <color name="input_stroke_focused">#7C4DFF</color>
+    
+    <!-- ══════════ TEXT COLORS ══════════ -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B3B3CC</color>
+    <color name="text_tertiary">#7A7A99</color>
+    <color name="text_disabled">#4D4D66</color>
+    <color name="text_on_primary">#FFFFFF</color>
+    <color name="text_on_secondary">#FFFFFF</color>
+    <color name="text_on_surface">#EAEAEF</color>
+    
+    <!-- ══════════ OVERLAY & GLASS EFFECT ══════════ -->
+    <color name="overlay_dark">#80000000</color>
+    <color name="overlay_light">#20FFFFFF</color>
+    <color name="glass_background">#401A1A2E</color>
+    <color name="glass_border">#303D3D6B</color>
+    <color name="surface_variant_overlay">#40252542</color>
+    
+    <!-- ══════════ SHIMMER EFFECT ══════════ -->
+    <color name="shimmer_base">#1A1A2E</color>
+    <color name="shimmer_highlight">#252542</color>
+    
+    <!-- ══════════ SEMANTIC COLORS ══════════ -->
+    <color name="primary">#7C4DFF</color>
+    <color name="primary_20">#337C4DFF</color>
+    <color name="secondary">#00BFA5</color>
+    <color name="secondary_20">#3300BFA5</color>
+    <color name="accent">#FF4081</color>
+    <color name="background_dark">#0D0D1A</color>
+    <color name="surface_elevated">#252542</color>
+    <color name="card_stroke">#3D3D6B</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    
+    <!-- ══════════ XP / GOLD COLORS ══════════ -->
+    <color name="xp_gold">#FFD700</color>
+    <color name="xp_gold_secondary">#B8860B</color>
+    <color name="xp_gold_20">#33FFD700</color>
+    <color name="rpg_gold_20">#33FFD700</color>
+    
+    <!-- ══════════ CHIP COLORS ══════════ -->
+    <color name="chip_background_color">#252542</color>
+    <color name="chip_stroke_color">#3D3D6B</color>
+    <color name="chip_text_color">#B3B3CC</color>
+    
+    <!-- ══════════ COMMON ALIASES ══════════ -->
+    <color name="background">#0D0D1A</color>
+    <color name="surface">#1A1A2E</color>
+    <color name="divider">#3D3D6B</color>
+    <color name="error">#FF5252</color>
+    <color name="success">#00E676</color>
+    <color name="warning">#FFAB40</color>
+</resources>

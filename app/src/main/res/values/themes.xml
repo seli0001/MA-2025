@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         2026 MODERN THEME - RPG HABIT TRACKER
+         Dark theme with neon accents, glassmorphism, smooth animations
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <!-- ══════════ BASE APPLICATION THEME ══════════ -->
+    <style name="Base.Theme.RPGHabitTracker" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Primary Brand Colors -->
+        <item name="colorPrimary">@color/md_theme_light_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/md_theme_light_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/md_theme_light_onPrimaryContainer</item>
+        
+        <!-- Secondary Colors -->
+        <item name="colorSecondary">@color/md_theme_light_secondary</item>
+        <item name="colorOnSecondary">@color/md_theme_light_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/md_theme_light_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/md_theme_light_onSecondaryContainer</item>
+        
+        <!-- Tertiary Colors -->
+        <item name="colorTertiary">@color/md_theme_light_tertiary</item>
+        <item name="colorOnTertiary">@color/md_theme_light_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/md_theme_light_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/md_theme_light_onTertiaryContainer</item>
+        
+        <!-- Background - Deep Dark -->
+        <item name="android:colorBackground">@color/md_theme_light_background</item>
+        <item name="colorOnBackground">@color/md_theme_light_onBackground</item>
+        
+        <!-- Surface Colors -->
+        <item name="colorSurface">@color/md_theme_light_surface</item>
+        <item name="colorOnSurface">@color/md_theme_light_onSurface</item>
+        <item name="colorSurfaceVariant">@color/md_theme_light_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/md_theme_light_onSurfaceVariant</item>
+        
+        <!-- Error Colors -->
+        <item name="colorError">@color/md_theme_light_error</item>
+        <item name="colorOnError">@color/md_theme_light_onError</item>
+        <item name="colorErrorContainer">@color/md_theme_light_errorContainer</item>
+        <item name="colorOnErrorContainer">@color/md_theme_light_onErrorContainer</item>
+        
+        <!-- Status Bar - Transparent for edge-to-edge -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/md_theme_light_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        
+        <!-- Window Properties -->
+        <item name="android:windowBackground">@color/md_theme_light_background</item>
+        <item name="android:windowActivityTransitions">true</item>
+        
+        <!-- Default Text Appearance -->
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_tertiary</item>
+        
+        <!-- Button Styles -->
+        <item name="materialButtonStyle">@style/Widget.RPG.Button.Primary</item>
+        <item name="materialButtonOutlinedStyle">@style/Widget.RPG.Button.Outlined</item>
+        
+        <!-- Text Input Style -->
+        <item name="textInputStyle">@style/Widget.RPG.TextInputLayout</item>
+        
+        <!-- Card Style -->
+        <item name="materialCardViewStyle">@style/Widget.RPG.Card</item>
+    </style>
+
+    <style name="Theme.RPGHabitTracker" parent="Base.Theme.RPGHabitTracker" />
+    
+    <!-- ══════════ SPLASH SCREEN THEME ══════════ -->
+    <style name="Theme.RPGHabitTracker.Splash" parent="Theme.RPGHabitTracker">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/md_theme_light_background</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
+    </style>
+    
+    <!-- ══════════ AUTH SCREENS THEME ══════════ -->
+    <style name="Theme.RPGHabitTracker.Auth" parent="Theme.RPGHabitTracker">
+        <item name="android:windowTranslucentStatus">true</item>
+    </style>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         BUTTON STYLES - 2026 Modern Design
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <!-- Primary Button - Gradient effect via background -->
+    <style name="Widget.RPG.Button.Primary" parent="Widget.Material3.Button">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingLeft">32dp</item>
+        <item name="android:paddingRight">32dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.02</item>
+        <item name="cornerRadius">28dp</item>
+        <item name="backgroundTint">@color/md_theme_light_primary</item>
+        <item name="android:textColor">@color/text_on_primary</item>
+        <item name="rippleColor">@color/overlay_light</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="elevation">0dp</item>
+    </style>
+    
+    <!-- Secondary Button - Teal/Cyan Accent -->
+    <style name="Widget.RPG.Button.Secondary" parent="Widget.Material3.Button">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingLeft">32dp</item>
+        <item name="android:paddingRight">32dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.02</item>
+        <item name="cornerRadius">28dp</item>
+        <item name="backgroundTint">@color/md_theme_light_secondary</item>
+        <item name="android:textColor">@color/text_on_secondary</item>
+        <item name="rippleColor">@color/overlay_light</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="elevation">0dp</item>
+    </style>
+    
+    <!-- Outlined Button -->
+    <style name="Widget.RPG.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingLeft">32dp</item>
+        <item name="android:paddingRight">32dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.02</item>
+        <item name="cornerRadius">28dp</item>
+        <item name="strokeColor">@color/md_theme_light_primary</item>
+        <item name="strokeWidth">2dp</item>
+        <item name="android:textColor">@color/md_theme_light_primary</item>
+        <item name="rippleColor">@color/md_theme_light_primaryContainer</item>
+    </style>
+    
+    <!-- Text Button - Minimal -->
+    <style name="Widget.RPG.Button.Text" parent="Widget.Material3.Button.TextButton">
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/md_theme_light_primary</item>
+        <item name="rippleColor">@color/md_theme_light_primaryContainer</item>
+    </style>
+    
+    <!-- Icon Button -->
+    <style name="Widget.RPG.Button.Icon" parent="Widget.Material3.Button.IconButton">
+        <item name="iconTint">@color/text_primary</item>
+        <item name="rippleColor">@color/overlay_light</item>
+    </style>
+    
+    <!-- FAB Style -->
+    <style name="Widget.RPG.FAB" parent="Widget.Material3.FloatingActionButton.Primary">
+        <item name="backgroundTint">@color/md_theme_light_primary</item>
+        <item name="tint">@color/text_on_primary</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.RPG.FAB</item>
+    </style>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         CARD STYLES - Glass effect
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <style name="Widget.RPG.Card" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">@color/card_background</item>
+        <item name="cardCornerRadius">24dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeColor">@color/card_border</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="contentPadding">16dp</item>
+    </style>
+    
+    <style name="Widget.RPG.Card.Elevated" parent="Widget.RPG.Card">
+        <item name="cardBackgroundColor">@color/card_background_elevated</item>
+        <item name="cardElevation">8dp</item>
+    </style>
+    
+    <style name="Widget.RPG.Card.Stats" parent="Widget.RPG.Card">
+        <item name="cardCornerRadius">20dp</item>
+        <item name="contentPadding">20dp</item>
+    </style>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         TEXT INPUT STYLES - Modern Filled
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <style name="Widget.RPG.TextInputLayout" parent="Widget.Material3.TextInputLayout.FilledBox">
+        <item name="boxBackgroundColor">@color/input_background</item>
+        <item name="boxStrokeColor">@color/input_stroke_selector</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">2dp</item>
+        <item name="boxCornerRadiusTopStart">16dp</item>
+        <item name="boxCornerRadiusTopEnd">16dp</item>
+        <item name="boxCornerRadiusBottomStart">16dp</item>
+        <item name="boxCornerRadiusBottomEnd">16dp</item>
+        <item name="hintTextColor">@color/text_tertiary</item>
+        <item name="android:textColorHint">@color/text_tertiary</item>
+        <item name="cursorColor">@color/md_theme_light_primary</item>
+        <item name="startIconTint">@color/text_secondary</item>
+        <item name="endIconTint">@color/text_secondary</item>
+    </style>
+    
+    <style name="Widget.RPG.TextInputLayout.Outlined" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@android:color/transparent</item>
+        <item name="boxStrokeColor">@color/input_stroke_selector</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">2dp</item>
+        <item name="boxCornerRadiusTopStart">16dp</item>
+        <item name="boxCornerRadiusTopEnd">16dp</item>
+        <item name="boxCornerRadiusBottomStart">16dp</item>
+        <item name="boxCornerRadiusBottomEnd">16dp</item>
+        <item name="hintTextColor">@color/text_tertiary</item>
+        <item name="cursorColor">@color/md_theme_light_primary</item>
+    </style>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         TEXT STYLES
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <style name="TextAppearance.RPG.Display" parent="TextAppearance.Material3.DisplayMedium">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">48sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+    
+    <style name="TextAppearance.RPG.Headline" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">32sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+    
+    <style name="TextAppearance.RPG.Title" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+    
+    <style name="TextAppearance.RPG.Subtitle" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+    
+    <style name="TextAppearance.RPG.Body" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:lineSpacingMultiplier">1.4</item>
+    </style>
+    
+    <style name="TextAppearance.RPG.Label" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:letterSpacing">0.04</item>
+    </style>
+    
+    <style name="TextAppearance.RPG.Caption" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textColor">@color/text_tertiary</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         SHAPE APPEARANCES
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <style name="ShapeAppearance.RPG.Small" parent="ShapeAppearance.Material3.SmallComponent">
+        <item name="cornerSize">12dp</item>
+    </style>
+    
+    <style name="ShapeAppearance.RPG.Medium" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerSize">16dp</item>
+    </style>
+    
+    <style name="ShapeAppearance.RPG.Large" parent="ShapeAppearance.Material3.LargeComponent">
+        <item name="cornerSize">24dp</item>
+    </style>
+    
+    <style name="ShapeAppearance.RPG.FAB" parent="ShapeAppearance.Material3.Corner.Full">
+        <item name="cornerSize">50%</item>
+    </style>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         BOTTOM NAVIGATION STYLE
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <style name="Widget.RPG.BottomNavigation" parent="Widget.Material3.BottomNavigationView">
+        <item name="backgroundTint">@color/card_background</item>
+        <item name="itemIconTint">@color/bottom_nav_color</item>
+        <item name="itemTextColor">@color/bottom_nav_color</item>
+        <item name="itemActiveIndicatorStyle">@style/Widget.RPG.BottomNavigation.ActiveIndicator</item>
+        <item name="labelVisibilityMode">labeled</item>
+        <item name="elevation">0dp</item>
+    </style>
+    
+    <style name="Widget.RPG.BottomNavigation.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/md_theme_light_primaryContainer</item>
+    </style>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         PROGRESS INDICATORS
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <style name="Widget.RPG.ProgressIndicator.Circular" parent="Widget.Material3.CircularProgressIndicator">
+        <item name="indicatorColor">@color/md_theme_light_primary</item>
+        <item name="trackColor">@color/input_background</item>
+        <item name="indicatorSize">48dp</item>
+    </style>
+    
+    <style name="Widget.RPG.ProgressIndicator.Linear" parent="Widget.Material3.LinearProgressIndicator">
+        <item name="indicatorColor">@color/md_theme_light_primary</item>
+        <item name="trackColor">@color/input_background</item>
+        <item name="trackCornerRadius">8dp</item>
+        <item name="trackThickness">8dp</item>
+    </style>
+    
+    <!-- XP Progress Bar -->
+    <style name="Widget.RPG.ProgressIndicator.XP" parent="Widget.RPG.ProgressIndicator.Linear">
+        <item name="indicatorColor">@color/rpg_xp</item>
+        <item name="trackColor">@color/input_background</item>
+    </style>
+    
+    <!-- Health Progress Bar -->
+    <style name="Widget.RPG.ProgressIndicator.Health" parent="Widget.RPG.ProgressIndicator.Linear">
+        <item name="indicatorColor">@color/rpg_health</item>
+        <item name="trackColor">@color/input_background</item>
+    </style>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         CHIP STYLES
+         ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <style name="Widget.RPG.Chip" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">@color/chip_background_color</item>
+        <item name="chipStrokeColor">@color/card_border</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="chipCornerRadius">16dp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="checkedIconTint">@color/md_theme_light_primary</item>
+    </style>
+    
+    <!-- Tab Text Appearance -->
+    <style name="TabTextAppearance" parent="TextAppearance.Material3.TitleSmall">
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="textAllCaps">false</item>
+    </style>
+    
+    <!-- Date Picker Theme -->
+    <style name="DatePickerTheme" parent="ThemeOverlay.Material3.MaterialCalendar">
+        <item name="colorPrimary">@color/md_theme_light_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="android:windowBackground">@color/card_background</item>
+    </style>
+    
+    <!-- Time Picker Theme -->
+    <style name="TimePickerTheme" parent="ThemeOverlay.Material3.MaterialTimePicker">
+        <item name="colorPrimary">@color/md_theme_light_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+    </style>
+    
+</resources>

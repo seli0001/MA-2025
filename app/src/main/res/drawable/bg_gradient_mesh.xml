@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Main background gradient -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="180"
+                android:startColor="#0D0D1A"
+                android:centerColor="#151528"
+                android:endColor="#0D0D1A"/>
+        </shape>
+    </item>
+    
+    <!-- Decorative orb - top right -->
+    <item
+        android:top="-200dp"
+        android:right="-100dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="300dp"
+                android:startColor="#407C4DFF"
+                android:endColor="#00000000"/>
+            <size
+                android:width="400dp"
+                android:height="400dp"/>
+        </shape>
+    </item>
+    
+    <!-- Decorative orb - bottom left -->
+    <item
+        android:bottom="-150dp"
+        android:left="-100dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="250dp"
+                android:startColor="#3000BFA5"
+                android:endColor="#00000000"/>
+            <size
+                android:width="350dp"
+                android:height="350dp"/>
+        </shape>
+    </item>
+</layer-list>

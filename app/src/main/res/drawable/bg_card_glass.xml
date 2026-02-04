@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glassmorphism Card Background - Semi-transparent with gradient -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background blur effect simulation -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface_variant_overlay"/>
+            <corners android:radius="24dp"/>
+        </shape>
+    </item>
+    
+    <!-- Top gradient highlight -->
+    <item android:top="0dp" android:bottom="100dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="90"
+                android:startColor="@color/overlay_light"
+                android:endColor="@android:color/transparent"
+                android:type="linear"/>
+            <corners android:radius="24dp"/>
+        </shape>
+    </item>
+</layer-list>

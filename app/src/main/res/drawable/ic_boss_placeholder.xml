@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Monster body -->
+    <path
+        android:fillColor="#FF4081"
+        android:pathData="M60,20 C30,20 20,50 20,70 C20,95 35,100 60,100 C85,100 100,95 100,70 C100,50 90,20 60,20 Z"/>
+    <!-- Eyes -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,50 C40,45 45,40 50,40 C55,40 60,45 60,50 C60,55 55,60 50,60 C45,60 40,55 40,50 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,50 C60,45 65,40 70,40 C75,40 80,45 80,50 C80,55 75,60 70,60 C65,60 60,55 60,50 Z"/>
+    <!-- Pupils -->
+    <path
+        android:fillColor="#0D0D1A"
+        android:pathData="M48,50 m-5,0 a5,5 0,1 1,10 0 a5,5 0,1 1,-10 0"/>
+    <path
+        android:fillColor="#0D0D1A"
+        android:pathData="M72,50 m-5,0 a5,5 0,1 1,10 0 a5,5 0,1 1,-10 0"/>
+    <!-- Mouth -->
+    <path
+        android:fillColor="#0D0D1A"
+        android:pathData="M40,75 Q60,90 80,75 Q60,80 40,75"/>
+    <!-- Teeth -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,75 L50,80 L55,75 M65,75 L70,80 L75,75"/>
+    <!-- Horns -->
+    <path
+        android:fillColor="#7C4DFF"
+        android:pathData="M30,40 L25,15 L40,35 Z"/>
+    <path
+        android:fillColor="#7C4DFF"
+        android:pathData="M90,40 L95,15 L80,35 Z"/>
+</vector>

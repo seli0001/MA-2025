@@ -56,7 +56,7 @@ public class FirebaseRepository {
      * Register new user with email and password
      * Sends email verification after successful registration
      */
-    public void registerUser(String email, String password, String username,
+    public void registerUser(String email, String password, String username, String avatar,
                             OnSuccessListener<FirebaseUser> onSuccess,
                             OnFailureListener onFailure) {
         mAuth.createUserWithEmailAndPassword(email, password)
@@ -71,9 +71,9 @@ public class FirebaseRepository {
                         .addOnFailureListener(e -> {
                             Log.e(TAG, "Failed to send verification email", e);
                         });
-                    
+
                     // Create user profile in Firestore
-                    createUserProfile(user.getUid(), username, email, onSuccess, onFailure);
+                    createUserProfile(user.getUid(), username, email, avatar, onSuccess, onFailure);
                 }
             })
             .addOnFailureListener(onFailure);
@@ -150,7 +150,7 @@ public class FirebaseRepository {
     /**
      * Create user profile in Firestore
      */
-    private void createUserProfile(String userId, String username, String email,
+    private void createUserProfile(String userId, String username, String email, String avatar,
                                    OnSuccessListener<FirebaseUser> onSuccess,
                                    OnFailureListener onFailure) {
         Map<String, Object> userProfile = new HashMap<>();
@@ -160,6 +160,7 @@ public class FirebaseRepository {
                 ? username.trim().toLowerCase(Locale.ROOT)
                 : null);
         userProfile.put("email", email);
+        userProfile.put("avatar", avatar);
         userProfile.put("level", 1);
         userProfile.put("xp", 0);
         userProfile.put("coins", 0);

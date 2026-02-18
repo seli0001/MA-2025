@@ -21,35 +21,38 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 public class RegisterActivity extends AppCompatActivity {
-    
+
     private ImageButton backButton;
     private TextInputLayout usernameInputLayout, emailInputLayout, passwordInputLayout, confirmPasswordInputLayout;
     private TextInputEditText usernameEditText, emailEditText, passwordEditText, confirmPasswordEditText;
     private MaterialButton registerButton;
     private TextView loginTextView;
     private FrameLayout loadingOverlay;
-    
+
+    private FrameLayout[] avatarOptions;
+    private TextView avatarError;
+    private int selectedAvatarIndex = 0; // 0 = none, 1-5 = selected
+
     private FirebaseRepository firebaseRepository;
-    
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        // Enable edge-to-edge
+
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
         );
-        
+
         setContentView(R.layout.activity_register);
-        
+
         firebaseRepository = new FirebaseRepository();
-        
+
         initializeViews();
         setupClickListeners();
     }
-    
+
     private void initializeViews() {
         backButton = findViewById(R.id.backButton);
         usernameInputLayout = findViewById(R.id.usernameInputLayout);
@@ -63,21 +66,42 @@ public class RegisterActivity extends AppCompatActivity {
         registerButton = findViewById(R.id.registerButton);
         loginTextView = findViewById(R.id.loginTextView);
         loadingOverlay = findViewById(R.id.loadingOverlay);
+        avatarError = findViewById(R.id.avatarError);
+
+        avatarOptions = new FrameLayout[]{
+            findViewById(R.id.avatarOption1),
+            findViewById(R.id.avatarOption2),
+            findViewById(R.id.avatarOption3),
+            findViewById(R.id.avatarOption4),
+            findViewById(R.id.avatarOption5)
+        };
     }
-    
+
     private void setupClickListeners() {
         backButton.setOnClickListener(v -> onBackPressed());
-        
         registerButton.setOnClickListener(v -> registerUser());
-        
-        loginTextView.setOnClickListener(v -> {
-            finish(); // Go back to login
-        });
-        
-        // Avatar selection (placeholder)
-        findViewById(R.id.avatarContainer).setOnClickListener(v -> {
-            Toast.makeText(this, "Izbor avatara - uskoro!", Toast.LENGTH_SHORT).show();
-        });
+        loginTextView.setOnClickListener(v -> finish());
+
+        for (int i = 0; i < avatarOptions.length; i++) {
+            final int index = i + 1; // 1-based
+            avatarOptions[i].setOnClickListener(v -> selectAvatar(index));
+        }
+    }
+
+    private void selectAvatar(int index) {
+        selectedAvatarIndex = index;
+        avatarError.setVisibility(View.GONE);
+        for (int i = 0; i < avatarOptions.length; i++) {
+            if (i + 1 == index) {
+                avatarOptions[i].setBackgroundResource(R.drawable.bg_avatar_selected);
+                avatarOptions[i].setScaleX(1.15f);
+                avatarOptions[i].setScaleY(1.15f);
+            } else {
+                avatarOptions[i].setBackgroundResource(R.drawable.bg_avatar_circle);
+                avatarOptions[i].setScaleX(1f);
+                avatarOptions[i].setScaleY(1f);
+            }
+        }
     }
     
     private void registerUser() {
@@ -93,6 +117,11 @@ public class RegisterActivity extends AppCompatActivity {
         String confirmPassword = confirmPasswordEditText.getText().toString().trim();
         
         // Validation
+        if (selectedAvatarIndex == 0) {
+            avatarError.setVisibility(View.VISIBLE);
+            return;
+        }
+
         if (TextUtils.isEmpty(username)) {
             usernameInputLayout.setError("Korisničko ime je obavezno");
             usernameEditText.requestFocus();
@@ -151,7 +180,8 @@ public class RegisterActivity extends AppCompatActivity {
         setLoading(true);
         
         // Register with Firebase
-        firebaseRepository.registerUser(email, password, username,
+        String avatar = "avatar_" + selectedAvatarIndex;
+        firebaseRepository.registerUser(email, password, username, avatar,
             user -> {
                 // Success - but don't navigate yet, show verification message
                 setLoading(false);
@@ -221,6 +251,9 @@ public class RegisterActivity extends AppCompatActivity {
         emailEditText.setEnabled(!isLoading);
         passwordEditText.setEnabled(!isLoading);
         confirmPasswordEditText.setEnabled(!isLoading);
+        for (FrameLayout option : avatarOptions) {
+            option.setEnabled(!isLoading);
+        }
     }
     
     private void navigateToMainActivity() {

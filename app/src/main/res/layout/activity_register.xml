@@ -59,58 +59,126 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/welcomeText"/>
 
-            <!-- Avatar Selection -->
-            <FrameLayout
-                android:id="@+id/avatarContainer"
-                android:layout_width="100dp"
-                android:layout_height="100dp"
-                android:layout_marginTop="32dp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/subtitleText">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/bg_avatar_circle"/>
-
-                <ImageView
-                    android:id="@+id/avatarImage"
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_person"
-                    app:tint="@color/text_tertiary"
-                    android:contentDescription="Avatar"/>
-
-                <!-- Camera Icon Badge -->
-                <FrameLayout
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_gravity="bottom|end"
-                    android:background="@drawable/bg_button_gradient"
-                    android:padding="6dp">
-
-                    <ImageView
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:src="@drawable/ic_add"
-                        app:tint="@color/text_on_primary"
-                        android:contentDescription="Izmeni avatar"/>
-                </FrameLayout>
-            </FrameLayout>
-
+            <!-- Avatar Selection Label -->
             <TextView
-                android:id="@+id/avatarHint"
+                android:id="@+id/avatarLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Dodirni za izbor avatara"
-                android:textColor="@color/text_tertiary"
-                android:textSize="12sp"
+                android:layout_marginTop="28dp"
+                android:text="Izaberi svog heroja"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:fontFamily="sans-serif-medium"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/avatarContainer"/>
+                app:layout_constraintTop_toBottomOf="@id/subtitleText"/>
+
+            <!-- Avatar Options Row -->
+            <LinearLayout
+                android:id="@+id/avatarRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/avatarLabel">
+
+                <FrameLayout
+                    android:id="@+id/avatarOption1"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/bg_avatar_circle"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_avatar_1"
+                        android:contentDescription="Avatar 1"/>
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/avatarOption2"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/bg_avatar_circle"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_avatar_2"
+                        android:contentDescription="Avatar 2"/>
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/avatarOption3"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/bg_avatar_circle"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_avatar_3"
+                        android:contentDescription="Avatar 3"/>
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/avatarOption4"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/bg_avatar_circle"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_avatar_4"
+                        android:contentDescription="Avatar 4"/>
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/avatarOption5"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:background="@drawable/bg_avatar_circle"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_avatar_5"
+                        android:contentDescription="Avatar 5"/>
+                </FrameLayout>
+
+            </LinearLayout>
+
+            <!-- Avatar validation error -->
+            <TextView
+                android:id="@+id/avatarError"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Molimo izaberi avatar da nastaviš"
+                android:textColor="@color/error"
+                android:textSize="12sp"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/avatarRow"/>
 
             <!-- Registration Card -->
             <com.google.android.material.card.MaterialCardView
@@ -125,7 +193,7 @@
                 app:strokeWidth="1dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/avatarHint">
+                app:layout_constraintTop_toBottomOf="@id/avatarError">
 
                 <LinearLayout
                     android:layout_width="match_parent"

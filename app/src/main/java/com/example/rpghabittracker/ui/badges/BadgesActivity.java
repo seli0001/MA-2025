@@ -37,6 +37,7 @@ public class BadgesActivity extends AppCompatActivity {
     private int bossesDefeated = 0;
     private int totalXp = 0;
     private boolean hasAlliance = false;
+    private int specialMissionsCompleted = 0;
     private List<String> unlockedBadgeIds = new ArrayList<>();
     
     @Override
@@ -93,6 +94,9 @@ public class BadgesActivity extends AppCompatActivity {
                         
                         Long xp = document.getLong("xp");
                         if (xp != null) totalXp = xp.intValue();
+
+                        Long sm = document.getLong("specialMissionsCompleted");
+                        if (sm != null) specialMissionsCompleted = sm.intValue();
                         
                         String allianceId = document.getString("allianceId");
                         hasAlliance = allianceId != null && !allianceId.isEmpty();
@@ -131,7 +135,15 @@ public class BadgesActivity extends AppCompatActivity {
             if (unlockedBadgeIds.contains(badge.getId())) {
                 badge.setUnlocked(true);
                 unlocked++;
-            } else if (badge.checkUnlock(tasksCompleted, maxStreak, level, bossesDefeated, totalXp, hasAlliance)) {
+            } else if (badge.checkUnlock(
+                    tasksCompleted,
+                    maxStreak,
+                    level,
+                    bossesDefeated,
+                    totalXp,
+                    hasAlliance,
+                    specialMissionsCompleted
+            )) {
                 // Newly unlocked - save to Firebase
                 badge.setUnlocked(true);
                 badge.setUnlockedAt(System.currentTimeMillis());

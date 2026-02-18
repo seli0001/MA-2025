@@ -48,25 +48,10 @@
         android:textSize="28sp"
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.05"
-        app:layout_constraintBottom_toTopOf="@id/splashSubtitle"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/logoContainer" />
-
-    <!-- Tagline -->
-    <TextView
-        android:id="@+id/splashSubtitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Gamifikuj svoje navike"
-        android:textColor="@color/text_secondary"
-        android:textSize="16sp"
-        android:fontFamily="sans-serif"
         app:layout_constraintBottom_toTopOf="@id/loadingIndicator"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/splashTitle" />
+        app:layout_constraintTop_toBottomOf="@id/logoContainer" />
 
     <!-- Loading Indicator -->
     <com.google.android.material.progressindicator.CircularProgressIndicator
@@ -82,6 +67,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/splashSubtitle" />
+        app:layout_constraintTop_toBottomOf="@id/splashTitle" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

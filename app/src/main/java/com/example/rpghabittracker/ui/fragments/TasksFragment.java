@@ -23,6 +23,7 @@ import com.example.rpghabittracker.ui.tasks.AddTaskActivity;
 import com.example.rpghabittracker.ui.tasks.TaskDetailsActivity;
 import com.example.rpghabittracker.ui.viewmodel.TaskViewModel;
 import com.example.rpghabittracker.ui.viewmodel.UserViewModel;
+import com.example.rpghabittracker.utils.AllianceMissionManager;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
@@ -30,16 +31,21 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Fragment for displaying and managing tasks
+ * Fragment for displaying and managing tasks.
+ *
+ * One-time tab  -> shows non-recurring tasks
+ * Recurring tab -> shows daily occurrence rows (parentTaskId != null);
+ *                  templates are hidden from the list but drive generation
  */
 public class TasksFragment extends Fragment implements TaskAdapter.TaskClickListener {
-    
+
     private RecyclerView recyclerTasks;
     private LinearLayout emptyState;
     private ProgressBar progressBar;
@@ -47,24 +53,24 @@ public class TasksFragment extends Fragment implements TaskAdapter.TaskClickList
     private ChipGroup filterChipGroup;
     private Chip chipAll, chipActive, chipCompleted, chipFailed;
     private ExtendedFloatingActionButton fabAddTask;
-    
+
     private TaskAdapter adapter;
     private TaskViewModel viewModel;
     private UserViewModel userViewModel;
-    
+
     private boolean showRecurring = false;
     private String currentFilter = "ALL";
     private List<Task> allTasks = new ArrayList<>();
-    
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_tasks, container, false);
     }
-    
+
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        
+
         initViews(view);
         setupViewModel();
         setupRecyclerView();
@@ -72,7 +78,7 @@ public class TasksFragment extends Fragment implements TaskAdapter.TaskClickList
         setupFilters();
         setupFab();
     }
-    
+
     private void initViews(View view) {
         recyclerTasks = view.findViewById(R.id.recyclerTasks);
         emptyState = view.findViewById(R.id.emptyState);
@@ -84,102 +90,88 @@ public class TasksFragment extends Fragment implements TaskAdapter.TaskClickList
         chipCompleted = view.findViewById(R.id.chipCompleted);
         chipFailed = view.findViewById(R.id.chipFailed);
         fabAddTask = view.findViewById(R.id.fabAddTask);
-        
-        // Calendar button
-        view.findViewById(R.id.btnCalendar).setOnClickListener(v -> {
-            startActivity(new Intent(requireContext(), 
-                    com.example.rpghabittracker.ui.calendar.CalendarActivity.class));
-        });
+
+        view.findViewById(R.id.btnCalendar).setOnClickListener(v ->
+                startActivity(new Intent(requireContext(),
+                        com.example.rpghabittracker.ui.calendar.CalendarActivity.class)));
     }
-    
+
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(TaskViewModel.class);
-        // Use requireActivity() to share UserViewModel with MainActivity
         userViewModel = new ViewModelProvider(requireActivity()).get(UserViewModel.class);
-        
+
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
             viewModel.setUserId(user.getUid());
             userViewModel.setUserId(user.getUid());
         }
-        
-        // Observe all tasks
+
+        // Generate today's recurring occurrences as soon as we have a userId
+        viewModel.generateTodayOccurrences();
+        viewModel.processExpiredTasks();
+
+        // Observe all tasks (one-time + templates + occurrences)
         viewModel.getAllTasks().observe(getViewLifecycleOwner(), tasks -> {
             allTasks = tasks != null ? tasks : new ArrayList<>();
             applyFilters();
             progressBar.setVisibility(View.GONE);
         });
-        
-        // Observe XP gain events
+
         userViewModel.getXpGainEvent().observe(getViewLifecycleOwner(), event -> {
-            if (event != null) {
-                // XP gain is handled in onTaskComplete
-                userViewModel.clearXpGainEvent();
-            }
+            if (event != null) userViewModel.clearXpGainEvent();
         });
-        
-        // Observe level up events
+
         userViewModel.getLevelUpEvent().observe(getViewLifecycleOwner(), event -> {
             if (event != null) {
                 showLevelUpDialog(event);
                 userViewModel.clearLevelUpEvent();
             }
         });
-        
-        // Process expired tasks on load
-        viewModel.processExpiredTasks();
     }
-    
+
     private void showLevelUpDialog(UserViewModel.LevelUpEvent event) {
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle("🎊 LEVEL UP!")
-                .setMessage("Čestitamo! Dostigli ste nivo " + event.newLevel + "!\n\n" +
+                .setTitle("LEVEL UP!")
+                .setMessage("Cestitamo! Dostigli ste nivo " + event.newLevel + "!\n\n" +
                         "Nova titula: " + event.newTitle + "\n" +
                         "Bonus PP: +" + event.ppReward)
-                .setPositiveButton("Odlično!", null)
+                .setPositiveButton("Odlicno!", null)
                 .show();
     }
-    
+
     private void setupRecyclerView() {
         adapter = new TaskAdapter(this);
         recyclerTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerTasks.setAdapter(adapter);
-        
-        // Shrink FAB on scroll
+
         recyclerTasks.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                if (dy > 0) {
-                    fabAddTask.shrink();
-                } else if (dy < 0) {
-                    fabAddTask.extend();
-                }
+                if (dy > 0) fabAddTask.shrink();
+                else if (dy < 0) fabAddTask.extend();
             }
         });
     }
-    
+
     private void setupTabs() {
-        tabLayout.addTab(tabLayout.newTab().setText("One-time"));
-        tabLayout.addTab(tabLayout.newTab().setText("Recurring"));
-        
+        tabLayout.addTab(tabLayout.newTab().setText("Jednokratni"));
+        tabLayout.addTab(tabLayout.newTab().setText("Ponavljajuci"));
+
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 showRecurring = tab.getPosition() == 1;
                 applyFilters();
             }
-            
-            @Override
-            public void onTabUnselected(TabLayout.Tab tab) {}
-            
-            @Override
-            public void onTabReselected(TabLayout.Tab tab) {}
+
+            @Override public void onTabUnselected(TabLayout.Tab tab) {}
+            @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
     }
-    
+
     private void setupFilters() {
         chipAll.setChecked(true);
-        
+
         filterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
             if (checkedIds.contains(R.id.chipAll)) {
                 currentFilter = "ALL";
@@ -196,7 +188,7 @@ public class TasksFragment extends Fragment implements TaskAdapter.TaskClickList
             applyFilters();
         });
     }
-    
+
     private void setupFab() {
         fabAddTask.setOnClickListener(v -> {
             Intent intent = new Intent(requireContext(), AddTaskActivity.class);
@@ -204,116 +196,140 @@ public class TasksFragment extends Fragment implements TaskAdapter.TaskClickList
             startActivity(intent);
         });
     }
-    
+
     private void applyFilters() {
         List<Task> filtered = allTasks.stream()
                 .filter(task -> {
-                    // Filter by type (one-time vs recurring)
-                    boolean typeMatch = showRecurring == task.isRecurring();
-                    
-                    // Filter by status
-                    boolean statusMatch = "ALL".equals(currentFilter) 
+                    boolean typeMatch;
+                    if (showRecurring) {
+                        // Show only daily occurrences (have a parent), not the template row
+                        String pid = task.getParentTaskId();
+                        typeMatch = task.isRecurring() && pid != null && !pid.isEmpty();
+                    } else {
+                        // Show only one-time tasks
+                        typeMatch = !task.isRecurring();
+                    }
+
+                    boolean statusMatch = "ALL".equals(currentFilter)
                             || currentFilter.equals(task.getStatus());
-                    
+
                     return typeMatch && statusMatch;
                 })
                 .collect(Collectors.toList());
-        
+
         adapter.submitList(filtered);
-        
-        // Show/hide empty state
-        if (filtered.isEmpty()) {
-            emptyState.setVisibility(View.VISIBLE);
-            recyclerTasks.setVisibility(View.GONE);
-        } else {
-            emptyState.setVisibility(View.GONE);
-            recyclerTasks.setVisibility(View.VISIBLE);
-        }
+
+        emptyState.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
+        recyclerTasks.setVisibility(filtered.isEmpty() ? View.GONE : View.VISIBLE);
     }
-    
+
     @Override
     public void onTaskClick(Task task) {
         Intent intent = new Intent(requireContext(), TaskDetailsActivity.class);
         intent.putExtra(TaskDetailsActivity.EXTRA_TASK_ID, task.getId());
         startActivity(intent);
     }
-    
+
     @Override
     public void onTaskComplete(Task task, boolean isChecked) {
-        if (isChecked) {
-            int xpGained = task.getTotalXp();
-            
-            android.util.Log.d("TasksFragment", "Task complete: " + task.getName() + ", XP to add: " + xpGained);
-            
-            // Mark task as complete in database
-            viewModel.completeTask(task, () -> {
-                requireActivity().runOnUiThread(() -> {
-                    android.util.Log.d("TasksFragment", "Task marked complete, now adding XP: " + xpGained);
-                    
-                    // Add XP to user (this will trigger level up if needed)
-                    userViewModel.addXpFromTask(xpGained);
-                    
-                    Snackbar.make(requireView(), 
-                            "+" + xpGained + " XP zarađeno!", 
-                            Snackbar.LENGTH_SHORT)
-                            .setBackgroundTint(getResources().getColor(R.color.secondary, null))
-                            .setTextColor(getResources().getColor(R.color.white, null))
-                            .show();
-                });
-            });
+        if (!isChecked) return;
+        if (!Task.STATUS_ACTIVE.equals(task.getStatus())) {
+            Toast.makeText(requireContext(), "Zadatak nije aktivan", Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        int xpGained = task.getTotalXp();
+
+        viewModel.completeTask(task, () -> requireActivity().runOnUiThread(() -> {
+            userViewModel.addXpFromTask(xpGained);
+
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                AllianceMissionManager.recordTaskCompletion(
+                        FirebaseFirestore.getInstance(),
+                        currentUser.getUid(),
+                        task,
+                        null
+                );
+            }
+
+            Snackbar.make(requireView(), "+" + xpGained + " XP zaradjeno!",
+                    Snackbar.LENGTH_SHORT)
+                    .setBackgroundTint(getResources().getColor(R.color.secondary, null))
+                    .setTextColor(getResources().getColor(R.color.white, null))
+                    .show();
+        }));
     }
-    
+
     @Override
     public void onTaskLongClick(Task task) {
-        // Show options dialog
         showTaskOptionsDialog(task);
     }
-    
+
     private void showTaskOptionsDialog(Task task) {
-        String[] options;
+        boolean isOccurrence = task.isRecurring()
+                && task.getParentTaskId() != null
+                && !task.getParentTaskId().isEmpty();
+
         if (Task.STATUS_ACTIVE.equals(task.getStatus())) {
-            options = new String[]{"Edit", "Cancel Task", "Pause Task", "Delete"};
+            if (isOccurrence) {
+                // For an occurrence: cancel this instance OR pause/delete the whole series
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(task.getName())
+                        .setItems(new String[]{
+                                "Otkazi ovaj zadatak",
+                                "Pauziraj seriju",
+                                "Obrisi seriju"
+                        }, (dialog, which) -> {
+                            switch (which) {
+                                case 0:
+                                    viewModel.updateStatus(task.getId(), Task.STATUS_CANCELLED);
+                                    Toast.makeText(requireContext(), "Zadatak otkazan", Toast.LENGTH_SHORT).show();
+                                    break;
+                                case 1:
+                                    viewModel.pauseRecurringSeries(task.getParentTaskId());
+                                    Toast.makeText(requireContext(), "Serija pauzirana", Toast.LENGTH_SHORT).show();
+                                    break;
+                                case 2:
+                                    viewModel.deleteRecurringSeries(task.getParentTaskId());
+                                    Toast.makeText(requireContext(), "Serija obrisana", Toast.LENGTH_SHORT).show();
+                                    break;
+                            }
+                        })
+                        .show();
+            } else {
+                // One-time active task
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(task.getName())
+                        .setItems(new String[]{"Otkazi zadatak", "Obrisi"}, (dialog, which) -> {
+                            switch (which) {
+                                case 0:
+                                    viewModel.updateStatus(task.getId(), Task.STATUS_CANCELLED);
+                                    Toast.makeText(requireContext(), "Zadatak otkazan", Toast.LENGTH_SHORT).show();
+                                    break;
+                                case 1:
+                                    viewModel.delete(task);
+                                    Toast.makeText(requireContext(), "Zadatak obrisan", Toast.LENGTH_SHORT).show();
+                                    break;
+                            }
+                        })
+                        .show();
+            }
         } else {
-            options = new String[]{"Delete"};
+            // Non-active task: only delete is allowed (cancelled/failed can't be modified per spec)
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(task.getName())
+                    .setMessage("Zadatak nije aktivan i ne moze se menjati.")
+                    .setPositiveButton("U redu", null)
+                    .show();
         }
-        
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle(task.getName())
-                .setItems(options, (dialog, which) -> {
-                    if (Task.STATUS_ACTIVE.equals(task.getStatus())) {
-                        switch (which) {
-                            case 0: // Edit
-                                // TODO: Open edit activity
-                                break;
-                            case 1: // Cancel
-                                viewModel.updateStatus(task.getId(), Task.STATUS_CANCELLED);
-                                Toast.makeText(requireContext(), "Task cancelled", Toast.LENGTH_SHORT).show();
-                                break;
-                            case 2: // Pause (recurring only)
-                                if (task.isRecurring()) {
-                                    viewModel.updateStatus(task.getId(), Task.STATUS_PAUSED);
-                                    Toast.makeText(requireContext(), "Task paused", Toast.LENGTH_SHORT).show();
-                                }
-                                break;
-                            case 3: // Delete
-                                viewModel.delete(task);
-                                Toast.makeText(requireContext(), "Task deleted", Toast.LENGTH_SHORT).show();
-                                break;
-                        }
-                    } else {
-                        // Only delete option for non-active tasks
-                        viewModel.delete(task);
-                        Toast.makeText(requireContext(), "Task deleted", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .show();
     }
-    
+
     @Override
     public void onResume() {
         super.onResume();
-        // Refresh data when returning to this fragment
+        // Regenerate occurrences and expire stale tasks every time user returns
+        viewModel.generateTodayOccurrences();
         viewModel.processExpiredTasks();
     }
 }

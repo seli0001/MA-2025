@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.rpghabittracker.R;
+import com.example.rpghabittracker.data.model.User;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -104,12 +105,24 @@ public class UserProfileActivity extends AppCompatActivity {
         textTitle.setText(title != null ? title : "Početnik");
         textLevel.setText("Level " + (level != null ? level : 1));
         
-        int currentXp = xp != null ? xp.intValue() : 0;
-        int currentLevel = level != null ? level.intValue() : 1;
-        int xpNeeded = calculateXpForLevel(currentLevel + 1);
-        int xpForCurrentLevel = calculateXpForLevel(currentLevel);
-        int xpProgress = currentXp - xpForCurrentLevel;
-        int xpRange = xpNeeded - xpForCurrentLevel;
+        int currentXp = xp != null ? Math.max(0, xp.intValue()) : 0;
+        int currentLevel = level != null ? Math.max(1, level.intValue()) : 1;
+        boolean cumulativeXpModel = currentLevel > 1 && currentXp >= User.getXpForLevel(currentLevel);
+
+        int xpNeeded;
+        int xpProgress;
+        int xpRange;
+        if (cumulativeXpModel) {
+            int currentThreshold = User.getXpForLevel(currentLevel);
+            int nextThreshold = User.getXpForLevel(currentLevel + 1);
+            xpNeeded = nextThreshold;
+            xpRange = Math.max(1, nextThreshold - currentThreshold);
+            xpProgress = Math.min(Math.max(0, currentXp - currentThreshold), xpRange);
+        } else {
+            xpNeeded = Math.max(1, User.getXpForLevel(currentLevel));
+            xpRange = xpNeeded;
+            xpProgress = Math.min(currentXp, xpRange);
+        }
         
         textXp.setText(currentXp + " XP");
         textXpNeeded.setText("/ " + xpNeeded + " XP");
@@ -158,17 +171,6 @@ public class UserProfileActivity extends AppCompatActivity {
                     textBossesDefeated.setText(String.valueOf(querySnapshot.size()))
                 )
                 .addOnFailureListener(e -> textBossesDefeated.setText("0"));
-    }
-
-    private int calculateXpForLevel(int level) {
-        if (level <= 1) return 0;
-        if (level == 2) return 200;
-        
-        int prevXp = 200;
-        for (int i = 3; i <= level; i++) {
-            prevXp = (int) Math.round((prevXp * 2 + prevXp / 2.0) / 100.0) * 100;
-        }
-        return prevXp;
     }
 
     private int getAvatarResource(String avatarId) {

@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.rpghabittracker.R;
+import com.example.rpghabittracker.data.model.Equipment;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -114,8 +115,10 @@ public class EquipmentActivity extends AppCompatActivity implements EquipmentAda
                         Long battleRemaining = doc.getLong("battlesRemaining");
                         item.battlesRemaining = battleRemaining != null ? battleRemaining.intValue() : 0;
                         Number bonus = (Number) doc.get("bonus");
-                        item.bonus = bonus != null ? (int) Math.round(bonus.doubleValue()) : 0;
-                        
+                        item.bonus = bonus != null ? (int) Math.round(bonus.doubleValue() * 100) : 0;
+                        Long upgradeLevel = doc.getLong("upgradeLevel");
+                        item.upgradeLevel = upgradeLevel != null ? upgradeLevel.intValue() : 1;
+
                         allItems.add(item);
                     }
                     
@@ -183,21 +186,30 @@ public class EquipmentActivity extends AppCompatActivity implements EquipmentAda
     }
 
     private void showItemDetails(EquipmentItem item) {
-        String message = item.description + "\n\n";
-        
-        if (item.bonus > 0) {
-            message += "Bonus: +" + item.bonus + " PP\n";
+        StringBuilder message = new StringBuilder(item.description != null ? item.description : "");
+        message.append("\n\nBonus: ").append(String.format("%.2f%%", item.bonus * 100.0 / 100.0));
+
+        if (Equipment.TYPE_CLOTHING.equalsIgnoreCase(item.type) && item.battlesRemaining > 0) {
+            message.append("\nPreostalo borbi: ").append(item.battlesRemaining);
         }
-        if ("clothing".equals(item.type) && item.battlesRemaining > 0) {
-            message += "Preostalo bitaka: " + item.battlesRemaining + "\n";
+        if (Equipment.TYPE_POTION.equalsIgnoreCase(item.type)) {
+            message.append("\nKoličina: ").append(item.quantity);
         }
-        message += "Količina: " + item.quantity;
-        
-        new MaterialAlertDialogBuilder(this)
+        if (Equipment.TYPE_WEAPON.equalsIgnoreCase(item.type)) {
+            message.append("\nNivo unapređenja: ").append(item.upgradeLevel);
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder builder = new MaterialAlertDialogBuilder(this)
                 .setTitle(item.name)
-                .setMessage(message)
-                .setPositiveButton("OK", null)
-                .show();
+                .setMessage(message.toString())
+                .setPositiveButton("OK", null);
+
+        // Weapon upgrade button (spec §6: costs 60% of previous boss reward, +0.01% bonus)
+        if (Equipment.TYPE_WEAPON.equalsIgnoreCase(item.type)) {
+            builder.setNeutralButton("Unapredi", (d, w) -> upgradeWeapon(item));
+        }
+
+        builder.show();
     }
 
     private void usePotion(EquipmentItem item) {
@@ -262,6 +274,69 @@ public class EquipmentActivity extends AppCompatActivity implements EquipmentAda
         }
     }
 
+    /**
+     * Upgrade a weapon: costs 60% of previous boss reward, adds +0.01% to bonus (spec §6).
+     * Boss reward level N: 200 * 1.2^(N-1). Previous level = user's current level - 1.
+     */
+    private void upgradeWeapon(EquipmentItem item) {
+        // Load user level to calculate upgrade cost
+        firestore.collection("users").document(currentUserId).get()
+                .addOnSuccessListener(doc -> {
+                    Long levelLong = doc.getLong("level");
+                    int userLevel = levelLong != null ? levelLong.intValue() : 1;
+                    int referenceLevel = Math.max(1, userLevel - 1);
+                    int bossReward = 200;
+                    for (int i = 2; i <= referenceLevel; i++) {
+                        bossReward = (int) Math.round(bossReward * 1.2);
+                    }
+                    int upgradeCost = (int) (bossReward * 0.6);
+
+                    Long coinsLong = doc.getLong("coins");
+                    int userCoins = coinsLong != null ? coinsLong.intValue() : 0;
+
+                    if (userCoins < upgradeCost) {
+                        Toast.makeText(this,
+                                "Nemate dovoljno novčića! Potrebno: " + upgradeCost, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    new MaterialAlertDialogBuilder(this)
+                            .setTitle("Unapredi " + item.name)
+                            .setMessage("Cena unapređenja: " + upgradeCost + " novčića.\n+0.01% snage.\n\nNastaviti?")
+                            .setPositiveButton("Unapredi", (d, w) -> {
+                                // Deduct coins and increase weapon bonus by 0.0001 (= 0.01%)
+                                Number existingBonus = null;
+                                // Re-read to get latest bonus value
+                                firestore.collection("users").document(currentUserId)
+                                        .collection("equipment").document(item.id)
+                                        .get()
+                                        .addOnSuccessListener(eqDoc -> {
+                                            Number eb = (Number) eqDoc.get("bonus");
+                                            double currentBonus = eb != null ? eb.doubleValue() : 0.05;
+                                            double newBonus = currentBonus + 0.0001; // +0.01%
+                                            int newUpgradeLevel = item.upgradeLevel + 1;
+                                            int newCoins = userCoins - upgradeCost;
+
+                                            // Update weapon
+                                            eqDoc.getReference().update(
+                                                    "bonus", newBonus,
+                                                    "upgradeLevel", newUpgradeLevel);
+
+                                            // Deduct coins
+                                            firestore.collection("users").document(currentUserId)
+                                                    .update("coins", newCoins)
+                                                    .addOnSuccessListener(aVoid -> {
+                                                        Toast.makeText(this, item.name + " unapređen!",
+                                                                Toast.LENGTH_SHORT).show();
+                                                        loadEquipment();
+                                                    });
+                                        });
+                            })
+                            .setNegativeButton("Otkaži", null)
+                            .show();
+                });
+    }
+
     // Equipment item model
     public static class EquipmentItem {
         public String id;
@@ -273,5 +348,6 @@ public class EquipmentActivity extends AppCompatActivity implements EquipmentAda
         public boolean active;
         public int battlesRemaining;
         public int bonus;
+        public int upgradeLevel = 1;
     }
 }

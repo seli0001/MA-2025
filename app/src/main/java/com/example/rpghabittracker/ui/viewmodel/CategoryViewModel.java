@@ -131,6 +131,11 @@ public class CategoryViewModel extends AndroidViewModel {
         repository.updateCategoryColor(categoryId, newColor, userId, callback);
     }
     
+    // Check if a category is referenced by any task (blocks deletion)
+    public void isCategoryInUse(String categoryId, CategoryRepository.ColorCheckCallback callback) {
+        repository.isCategoryInUse(categoryId, callback);
+    }
+
     // Delete category
     public void deleteCategory(Category category) {
         repository.delete(category);

@@ -108,36 +108,47 @@ public class User implements Serializable {
     // Calculate XP needed for next level
     @Exclude
     public int getXpForNextLevel() {
-        if (level == 1) {
-            return 200;
-        }
-        // Formula: XP_prev * 2 + XP_prev / 2, rounded to next 100
-        int prevLevelXp = getXpForLevel(level);
-        int nextXp = prevLevelXp * 2 + prevLevelXp / 2;
-        return (int) (Math.ceil(nextXp / 100.0) * 100);
+        // getXpForLevel(level) returns the XP required to complete the current level:
+        // level 1 → 200, level 2 → 500, level 3 → 1250, …
+        return getXpForLevel(level);
     }
     
     // Get XP required for a specific level
     @Exclude
     public static int getXpForLevel(int targetLevel) {
-        if (targetLevel == 1) return 200;
+        if (targetLevel <= 1) return 200;
         int xp = 200;
         for (int i = 2; i <= targetLevel; i++) {
-            xp = xp * 2 + xp / 2;
-            xp = (int) (Math.ceil(xp / 100.0) * 100);
+            // Formula: XP_prev * 2 + XP_prev / 2 (without rounding to hundreds)
+            xp = (int) Math.round(xp * 2 + xp / 2.0);
         }
         return xp;
     }
     
-    // Calculate PP reward for current level
+    // Calculate base PP for current level (without equipment).
+    // Expected progression by level value: 0, 40, 70, 123, ...
     @Exclude
     public int getPpForCurrentLevel() {
-        if (level == 1) return 40;
-        int pp = 40;
-        for (int i = 2; i <= level; i++) {
+        return getBasePpForLevel(level);
+    }
+
+    @Exclude
+    public static int getBasePpForLevel(int currentLevel) {
+        int safeLevel = Math.max(1, currentLevel);
+        if (safeLevel <= 1) return 0;
+
+        int pp = 40; // Value after reaching level 2
+        for (int reachedLevel = 3; reachedLevel <= safeLevel; reachedLevel++) {
             pp = (int) Math.round(pp + pp * 3.0 / 4.0);
         }
         return pp;
+    }
+
+    // PP reward granted when the user reaches the given level.
+    // Example values: reached level 2 -> 40, level 3 -> 70, level 4 -> 123.
+    @Exclude
+    public static int getPpRewardForReachedLevel(int reachedLevel) {
+        return getBasePpForLevel(reachedLevel);
     }
     
     // Calculate total PP including equipment bonuses

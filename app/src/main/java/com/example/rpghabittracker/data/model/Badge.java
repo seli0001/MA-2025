@@ -51,7 +51,11 @@ public class Badge implements Serializable {
         new Badge("xp_1000", "XP Kolektor", "Zaradi 1000 XP", "✨", BadgeType.XP_EARNED, 1000),
         new Badge("xp_10000", "XP Master", "Zaradi 10000 XP", "💫", BadgeType.XP_EARNED, 10000),
         
-        new Badge("alliance", "Timski Igrač", "Pridruži se savezu", "🤝", BadgeType.ALLIANCE_JOIN, 1)
+        new Badge("alliance", "Timski Igrač", "Pridruži se savezu", "🤝", BadgeType.ALLIANCE_JOIN, 1),
+
+        new Badge("special_mission_1", "Prva Saveznička Misija", "Uspešno reši 1 specijalnu misiju", "🧪", BadgeType.SPECIAL_MISSIONS, 1),
+        new Badge("special_mission_3", "Savezni Veteran", "Uspešno reši 3 specijalne misije", "🏹", BadgeType.SPECIAL_MISSIONS, 3),
+        new Badge("special_mission_5", "Čuvar Saveza", "Uspešno reši 5 specijalnih misija", "🛡️", BadgeType.SPECIAL_MISSIONS, 5)
     };
     
     public Badge() {}
@@ -69,6 +73,12 @@ public class Badge implements Serializable {
     // Check if badge should be unlocked based on user stats
     public boolean checkUnlock(int tasksCompleted, int streak, int level, int bossesDefeated, 
                                int xpEarned, boolean hasAlliance) {
+        return checkUnlock(tasksCompleted, streak, level, bossesDefeated, xpEarned, hasAlliance, 0);
+    }
+
+    // Overload that includes special mission progression.
+    public boolean checkUnlock(int tasksCompleted, int streak, int level, int bossesDefeated,
+                               int xpEarned, boolean hasAlliance, int specialMissionsCompleted) {
         switch (type) {
             case FIRST_TASK:
             case TASKS_COMPLETED:
@@ -84,6 +94,8 @@ public class Badge implements Serializable {
                 return xpEarned >= requirement;
             case ALLIANCE_JOIN:
                 return hasAlliance;
+            case SPECIAL_MISSIONS:
+                return specialMissionsCompleted >= requirement;
             default:
                 return false;
         }

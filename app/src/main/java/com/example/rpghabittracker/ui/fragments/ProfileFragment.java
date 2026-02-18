@@ -240,26 +240,25 @@ public class ProfileFragment extends Fragment {
         if (textXpProgressLabel != null) {
             textXpProgressLabel.setText("Progress to Level 2");
         }
-        textXpProgress.setText("0 / 100");
+        textXpProgress.setText("0 / " + User.getXpForLevel(1));
         progressXp.setProgress(0);
     }
 
     private void updateXpProgress(int level, int xp) {
         int safeLevel = Math.max(1, level);
         int safeXp = Math.max(0, xp);
+        boolean cumulativeXpModel = safeLevel > 1 && safeXp >= User.getXpForLevel(safeLevel);
 
-        int xpForCurrentLevelThreshold = safeLevel > 1 ? User.getXpForLevel(safeLevel) : 0;
-        int xpForNextLevelThreshold = User.getXpForLevel(safeLevel + 1);
-        int xpNeeded = Math.max(1, xpForNextLevelThreshold - xpForCurrentLevelThreshold);
-        int progress = safeXp - xpForCurrentLevelThreshold;
-
-        // Some legacy users have "XP in current stage" instead of cumulative XP.
-        // For that data shape, avoid negative values and show stage progress directly.
-        if (progress < 0) {
+        int xpNeeded;
+        int progress;
+        if (cumulativeXpModel) {
+            int currentThreshold = User.getXpForLevel(safeLevel);
+            int nextThreshold = User.getXpForLevel(safeLevel + 1);
+            xpNeeded = Math.max(1, nextThreshold - currentThreshold);
+            progress = Math.min(Math.max(0, safeXp - currentThreshold), xpNeeded);
+        } else {
             xpNeeded = Math.max(1, User.getXpForLevel(safeLevel));
             progress = Math.min(safeXp, xpNeeded);
-        } else {
-            progress = Math.min(progress, xpNeeded);
         }
 
         if (textXpProgressLabel != null) {

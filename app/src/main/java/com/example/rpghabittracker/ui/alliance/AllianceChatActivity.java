@@ -11,6 +11,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.rpghabittracker.R;
+import com.example.rpghabittracker.notifications.AppNotificationManager;
+import com.example.rpghabittracker.utils.AllianceMissionManager;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -152,23 +154,46 @@ public class AllianceChatActivity extends AppCompatActivity {
                 .set(message)
                 .addOnSuccessListener(aVoid -> {
                     editMessage.setText("");
-                    
-                    // Deal damage to mission boss (1 damage per message)
-                    dealMissionDamage(1);
+
+                    // Special mission rule: one message contribution per day (+4 HP damage).
+                    AllianceMissionManager.recordMessageDay(firestore, allianceId, currentUserId, null);
+                    notifyAllianceMembers(messageId, text);
                 })
                 .addOnFailureListener(e ->
                     Toast.makeText(this, getFirestoreErrorMessage(e, "slanju poruke"), Toast.LENGTH_LONG).show()
                 );
     }
 
-    private void dealMissionDamage(int damage) {
-        firestore.collection("alliances").document(allianceId)
+    @SuppressWarnings("unchecked")
+    private void notifyAllianceMembers(String messageId, String messageText) {
+        firestore.collection("alliances")
+                .document(allianceId)
                 .get()
-                .addOnSuccessListener(doc -> {
-                    Boolean missionActive = doc.getBoolean("missionActive");
-                    if (missionActive != null && missionActive) {
-                        firestore.collection("alliances").document(allianceId)
-                                .update("missionCurrentDamage", FieldValue.increment(damage));
+                .addOnSuccessListener(allianceDoc -> {
+                    if (!allianceDoc.exists()) return;
+
+                    List<String> memberIds = allianceDoc.get("memberIds") instanceof List
+                            ? (List<String>) allianceDoc.get("memberIds")
+                            : new ArrayList<>();
+                    if (memberIds.isEmpty()) return;
+
+                    String senderName = currentUsername != null && !currentUsername.trim().isEmpty()
+                            ? currentUsername
+                            : "Član saveza";
+
+                    for (String memberId : memberIds) {
+                        if (memberId == null || memberId.trim().isEmpty()) continue;
+                        if (memberId.equals(currentUserId)) continue;
+
+                        AppNotificationManager.createAllianceMessageNotification(
+                                firestore,
+                                memberId,
+                                allianceId,
+                                messageId,
+                                currentUserId,
+                                senderName,
+                                messageText
+                        );
                     }
                 });
     }

@@ -27,6 +27,7 @@ import com.example.rpghabittracker.R;
 import com.example.rpghabittracker.data.model.Boss;
 import com.example.rpghabittracker.data.model.Task;
 import com.example.rpghabittracker.ui.viewmodel.UserViewModel;
+import com.example.rpghabittracker.utils.AllianceMissionManager;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
@@ -35,7 +36,9 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.SetOptions;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -81,8 +84,8 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
     // Battle state
     private int bossMaxHp = 200;
     private int bossCurrentHp = 200;
-    private int playerPp = 40;
-    private int maxPlayerPp = 40;
+    private int playerPp = 0;
+    private int maxPlayerPp = 0;
     private int bossLevel = 1;
     private int userLevel = 1;
     private String bossName = "Goblin";
@@ -91,8 +94,9 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
     private boolean treasureChestOpened = false;
     private boolean isVictory = false;
     
-    // Attack limit (from readme spec: 5 attacks max)
-    private static final int MAX_ATTACKS = 5;
+    // Attack limit (spec: 5 base; boots can add extra attacks)
+    private static final int BASE_MAX_ATTACKS = 5;
+    private int maxAttacks = BASE_MAX_ATTACKS;
     private int attackCount = 0;
     
     // Hit chance based on success rate
@@ -102,6 +106,7 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
     private int equipmentPpBonus = 0;
     private float equipmentDamageMultiplier = 1.0f;
     private float equipmentCritChanceBonus = 0.0f;
+    private float equipmentHitChanceBonus = 0.0f; // Shield: +10% per piece
     private static final float BASE_CRIT_CHANCE = 0.2f; // 20%
     
     // Rewards (stored for showing after chest opens)
@@ -231,10 +236,19 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
             userViewModel.createOrUpdateUser(userId, email, username, "avatar_1", syncedUser -> {
                 android.util.Log.d("BattleActivity", "User synced for battle: " + (syncedUser != null ? syncedUser.getUsername() : "null"));
 
+                long levelStartTime = 0L;
                 if (syncedUser != null) {
                     userLevel = Math.max(1, syncedUser.getLevel());
+                    // Use currentLevelStartTime so hit chance only counts tasks from
+                    // the current stage (etapa = period between two levels, per spec §5)
+                    levelStartTime = syncedUser.getCurrentLevelStartTime() > 0
+                            ? syncedUser.getCurrentLevelStartTime()
+                            : syncedUser.getCreatedAt();
                 }
-                
+
+                // Load hit chance filtered to current stage
+                loadHitChanceFromSuccessRate(userId, levelStartTime);
+
                 // After sync, load actual PP from database
                 userViewModel.getUserPowerPoints(pp -> {
                     runOnUiThread(() -> {
@@ -245,26 +259,44 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
                 });
             });
             
-            // Load hit chance based on task success rate
-            loadHitChanceFromSuccessRate(userId);
-            
             // Load equipment bonuses
             loadEquipmentBonuses(userId);
         }
     }
     
-    private void loadHitChanceFromSuccessRate(String userId) {
-        // Calculate hit chance based on task completion rate
+    /**
+     * Calculates hit chance from task success rate in the CURRENT STAGE only.
+     * Per spec §5: "Etapa predstavlja vremenski period između dva nivoa."
+     * Only tasks created on or after currentLevelStartTime are considered.
+     * Recurring templates are skipped — only their daily occurrences count.
+     * Tasks that exceed the daily/weekly quota (countsTowardQuota=false) are excluded.
+     */
+    private void loadHitChanceFromSuccessRate(String userId, long currentLevelStartTime) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        
+
         db.collection("tasks")
                 .whereEqualTo("userId", userId)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
                     int eligibleTasks = 0;
                     int completedTasks = 0;
-                    
+
                     for (QueryDocumentSnapshot doc : querySnapshot) {
+                        // Skip recurring templates — they are never directly completed;
+                        // only their daily occurrence copies count toward success rate.
+                        Boolean isRecurring = doc.getBoolean("isRecurring");
+                        String parentTaskId = doc.getString("parentTaskId");
+                        boolean isTemplate = Boolean.TRUE.equals(isRecurring)
+                                && (parentTaskId == null || parentTaskId.isEmpty());
+                        if (isTemplate) continue;
+
+                        // Only count tasks from the current stage (etapa).
+                        Long createdAt = resolveCreatedAtMillis(doc);
+                        if (currentLevelStartTime <= 0 || createdAt == null || createdAt < currentLevelStartTime) {
+                            continue;
+                        }
+
+                        // Exclude tasks that exceeded the daily/weekly quota.
                         Boolean countsTowardQuota = doc.getBoolean("countsTowardQuota");
                         if (countsTowardQuota != null && !countsTowardQuota) {
                             continue;
@@ -284,13 +316,19 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
                             completedTasks++;
                         }
                     }
-                    
-                    // Exact success rate from task completion, defaults to 100% when no eligible tasks.
+
+                    // Default to 100% when the current stage has no eligible tasks yet.
                     if (eligibleTasks > 0) {
                         hitChance = (float) completedTasks / eligibleTasks;
                     } else {
                         hitChance = 1.0f;
                     }
+
+                    android.util.Log.d("BattleActivity",
+                            "Hit chance calc: levelStart=" + currentLevelStartTime
+                                    + ", eligible=" + eligibleTasks
+                                    + ", completed=" + completedTasks
+                                    + ", hitChance=" + hitChance);
 
                     updateUI();
                 })
@@ -298,6 +336,20 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
                     // Keep previous/default chance if task data can't be loaded.
                     updateUI();
                 });
+    }
+
+    private Long resolveCreatedAtMillis(QueryDocumentSnapshot doc) {
+        Number createdAtNumber = (Number) doc.get("createdAt");
+        if (createdAtNumber != null) {
+            return createdAtNumber.longValue();
+        }
+
+        Timestamp createdAtTimestamp = doc.getTimestamp("createdAt");
+        if (createdAtTimestamp != null) {
+            return createdAtTimestamp.toDate().getTime();
+        }
+
+        return null;
     }
 
     private String normalizeTaskStatus(String rawStatus) {
@@ -323,42 +375,78 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
                     int ppBonus = 0;
                     float damageBonus = 1.0f;
                     float critBonus = 0.0f;
-                    
+                    float hitChanceBonus = 0.0f;
+                    int extraAttacks = BASE_MAX_ATTACKS; // start fresh each load
+
                     for (QueryDocumentSnapshot doc : querySnapshot) {
                         Number bonus = (Number) doc.get("bonus");
                         String effect = doc.getString("effect");
                         double bonusValue = bonus != null ? bonus.doubleValue() : 0d;
-                        if (bonusValue <= 0d && "CRIT_CHANCE".equals(effect) && "potion_luck".equals(doc.getId())) {
-                            // Backward compatibility for older shop items where 0.2 was stored as int(0).
-                            bonusValue = 0.2d;
-                        }
-                        
-                        if (effect != null) {
-                            if ("BOOST_PP".equals(effect)) {
-                                ppBonus += (int) Math.round(bonusValue);
-                            } else if ("ATTACK_POWER".equals(effect)) {
-                                if (bonusValue > 1.0d) {
-                                    // Multipliers from shop data (e.g. 1.2x, 1.5x)
-                                    damageBonus *= (float) bonusValue;
-                                } else if (bonusValue > 0d) {
-                                    // Percentage values (e.g. 0.15 => +15%)
+
+                        if (effect == null) continue;
+
+                        switch (effect) {
+                            // Permanent PP potions — treated as flat PP increase
+                            case "BOOST_PP_PERMANENT":
+                                // bonusValue is a fraction (e.g. 0.05 = 5%)
+                                // applied as a percentage of current base PP
+                                if (bonusValue > 0d) {
+                                    ppBonus += (int) Math.round(maxPlayerPp * bonusValue);
+                                }
+                                break;
+
+                            // Single-use PP potions — one-battle multiplier on base damage
+                            case "BOOST_PP_SINGLE":
+                                if (bonusValue > 0d) {
                                     damageBonus *= (1.0f + (float) bonusValue);
                                 }
-                            } else if ("CRIT_CHANCE".equals(effect)) {
+                                break;
+
+                            // Gloves: +10% attack power
+                            case "ATTACK_POWER":
                                 if (bonusValue > 1.0d) {
-                                    // Legacy integer percentage format: 20 => +20%
+                                    damageBonus *= (float) bonusValue;
+                                } else if (bonusValue > 0d) {
+                                    damageBonus *= (1.0f + (float) bonusValue);
+                                }
+                                break;
+
+                            // Shield: +10% hit chance (stacks per piece)
+                            case "HIT_CHANCE":
+                                if (bonusValue > 0d) {
+                                    hitChanceBonus += (float) bonusValue;
+                                }
+                                break;
+
+                            // Boots: 40% chance for +1 attack per active pair (spec §6)
+                            case "EXTRA_ATTACK":
+                                if (bonusValue > 0d && random.nextFloat() < (float) bonusValue) {
+                                    extraAttacks++;
+                                }
+                                break;
+
+                            case "CRIT_CHANCE":
+                                if (bonusValue > 1.0d) {
                                     critBonus += (float) (bonusValue / 100.0d);
                                 } else if (bonusValue > 0d) {
-                                    // Fraction format: 0.20 => +20%
                                     critBonus += (float) bonusValue;
                                 }
-                            }
+                                break;
+
+                            // Sword: +5% permanent PP (treated same as BOOST_PP_PERMANENT)
+                            case "WEAPON_SWORD_PP":
+                                if (bonusValue > 0d) {
+                                    damageBonus *= (1.0f + (float) bonusValue);
+                                }
+                                break;
                         }
                     }
-                    
+
                     equipmentPpBonus = ppBonus;
                     equipmentDamageMultiplier = damageBonus;
                     equipmentCritChanceBonus = critBonus;
+                    equipmentHitChanceBonus = hitChanceBonus;
+                    maxAttacks = extraAttacks;
                     
                     // Update PP with bonus
                     maxPlayerPp = Math.max(0, maxPlayerPp + ppBonus);
@@ -452,7 +540,7 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
         textPlayerPp.setText(playerPp + " PP");
         
         // Show attack count (max 5 attacks)
-        String attackInfo = "Napadi: " + attackCount + "/" + MAX_ATTACKS;
+        String attackInfo = "Napadi: " + attackCount + "/" + maxAttacks;
         textInstructions.setText(
                 attackInfo
                         + " | Šansa za pogodak: " + getHitChancePercent() + "%"
@@ -463,9 +551,9 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
         progressBossHp.setProgress(hpPercentage);
         
         // Change attack button state
-        if (playerPp <= 0 || attackCount >= MAX_ATTACKS) {
+        if (playerPp <= 0 || attackCount >= maxAttacks) {
             buttonAttack.setEnabled(false);
-            buttonAttack.setText(attackCount >= MAX_ATTACKS ? "Max napada" : "Nizak PP");
+            buttonAttack.setText(attackCount >= maxAttacks ? "Max napada" : "Nizak PP");
         } else {
             buttonAttack.setEnabled(true);
             buttonAttack.setText("Napad");
@@ -481,8 +569,10 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
     }
 
     private boolean rollForHit() {
-        int roll = random.nextInt(100); // 0-99, per spec (0-100 style threshold check)
-        int threshold = getHitChancePercent();
+        int roll = random.nextInt(100); // 0-99, per spec
+        // hitChance = task success rate for current stage; shield adds flat bonus on top
+        float effective = Math.min(1.0f, hitChance + equipmentHitChanceBonus);
+        int threshold = Math.max(0, Math.min(100, Math.round(effective * 100f)));
         boolean hit = roll < threshold;
         android.util.Log.d("BattleActivity", "Hit RNG roll=" + roll + ", threshold=" + threshold + ", hit=" + hit);
         return hit;
@@ -508,8 +598,22 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
         return critical;
     }
 
+    private void showAttackFeedback(String message, boolean success) {
+        View root = findViewById(android.R.id.content);
+        if (root == null) {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Snackbar snackbar = Snackbar.make(root, message, Snackbar.LENGTH_SHORT);
+        snackbar.setAnimationMode(Snackbar.ANIMATION_MODE_FADE);
+        snackbar.setTextColor(getColor(R.color.white));
+        snackbar.setBackgroundTint(getColor(success ? R.color.status_active : R.color.status_failed));
+        snackbar.show();
+    }
+
     private void attack() {
-        if (battleEnded || playerPp <= 0 || attackCount >= MAX_ATTACKS) return;
+        if (battleEnded || playerPp <= 0 || attackCount >= maxAttacks) return;
         
         attackCount++;
         
@@ -522,14 +626,20 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
         if (!hit) {
             // Miss!
             showMissEffect();
+            showAttackFeedback("Promašaj! Bos nije pogođen.", false);
             vibrate();
             updateUI();
             
             // Check for defeat after miss
-            if (attackCount >= MAX_ATTACKS && bossCurrentHp > 0) {
+            if (attackCount >= maxAttacks && bossCurrentHp > 0) {
                 handler.postDelayed(this::showDefeat, 500);
             }
             return;
+        }
+
+        // Special mission rule: successful regular-boss hit contributes to alliance mission.
+        if (userIdForBattle != null && !userIdForBattle.trim().isEmpty()) {
+            AllianceMissionManager.recordBattleHit(FirebaseFirestore.getInstance(), userIdForBattle, null);
         }
         
         // Per project spec: successful hit removes PP value from boss HP.
@@ -545,6 +655,11 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
         
         // Show damage with animations
         showDamageEffect(damage, critical);
+        if (critical) {
+            showAttackFeedback("Kritičan pogodak! -" + damage + " HP", true);
+        } else {
+            showAttackFeedback("Pogodak! -" + damage + " HP", true);
+        }
         
         // Vibrate
         vibrate();
@@ -555,7 +670,7 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
         // Check if boss defeated
         if (bossCurrentHp <= 0) {
             handler.postDelayed(this::showVictory, 500);
-        } else if (attackCount >= MAX_ATTACKS) {
+        } else if (attackCount >= maxAttacks) {
             handler.postDelayed(this::showDefeat, 500);
         }
     }
@@ -721,13 +836,18 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
     private void awardRewards() {
         if (rewardsAwarded) return;
         rewardsAwarded = true;
-        
+
+        // Decrement durability of active clothing
+        decrementClothingDurability();
+
         // Award XP and coins through ViewModel
         userViewModel.awardBattleRewards(finalXp, finalCoins, (success, xpGained, coinsGained, leveledUp, user) -> {
             runOnUiThread(() -> {
                 if (success) {
                     if (isVictory) {
                         progressBossLevel();
+                        // 20% chance for equipment drop: 95% clothing, 5% weapon (spec §5)
+                        rollForEquipmentDrop();
                     }
 
                     if (user != null) {
@@ -736,11 +856,9 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
                         updateUI();
                     }
 
-                    // Show toast confirmation
                     Toast.makeText(this, "+" + coinsGained + " novčića, +" + xpGained + " XP", Toast.LENGTH_SHORT).show();
-                    
+
                     if (leveledUp && user != null) {
-                        // Delay level up dialog to show after results
                         handler.postDelayed(() -> showLevelUpDialog(user.getLevel()), 2000);
                     }
                 } else {
@@ -748,6 +866,136 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
                 }
             });
         });
+    }
+
+    /**
+     * Decrement battlesRemaining for every active clothing piece.
+     * When it reaches 0, deactivate and remove the item (spec §6).
+     */
+    private void decrementClothingDurability() {
+        if (userIdForBattle == null) return;
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("users").document(userIdForBattle)
+                .collection("equipment")
+                .whereEqualTo("type", "CLOTHING")
+                .whereEqualTo("active", true)
+                .get()
+                .addOnSuccessListener(snapshots -> {
+                    for (QueryDocumentSnapshot doc : snapshots) {
+                        Long remaining = doc.getLong("battlesRemaining");
+                        int left = remaining != null ? remaining.intValue() : 0;
+                        if (left <= 1) {
+                            // Last battle — deactivate and delete (spec: removed after 2 battles)
+                            doc.getReference().delete();
+                        } else {
+                            doc.getReference().update("battlesRemaining", left - 1);
+                        }
+                    }
+                });
+    }
+
+    /**
+     * 20% chance to drop equipment on victory.
+     * If drop: 95% chance = clothing (random piece), 5% chance = weapon (spec §5).
+     * If weapon already owned, adds 0.02% to its upgrade value instead (spec §6).
+     */
+    private void rollForEquipmentDrop() {
+        if (userIdForBattle == null) return;
+        if (random.nextFloat() > 0.20f) return; // 80% no drop
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        String[] clothingTypes = {
+            com.example.rpghabittracker.data.model.Equipment.CLOTHING_GLOVES,
+            com.example.rpghabittracker.data.model.Equipment.CLOTHING_SHIELD,
+            com.example.rpghabittracker.data.model.Equipment.CLOTHING_BOOTS
+        };
+        String[] weaponTypes = {
+            com.example.rpghabittracker.data.model.Equipment.WEAPON_SWORD,
+            com.example.rpghabittracker.data.model.Equipment.WEAPON_BOW
+        };
+
+        boolean isWeaponDrop = random.nextFloat() < 0.05f; // 5% weapon, 95% clothing
+        String droppedSubType;
+        String droppedName;
+        String droppedEffect;
+        double droppedBonus;
+        String droppedType;
+
+        if (isWeaponDrop) {
+            droppedSubType = weaponTypes[random.nextInt(weaponTypes.length)];
+            droppedType = com.example.rpghabittracker.data.model.Equipment.TYPE_WEAPON;
+            if (com.example.rpghabittracker.data.model.Equipment.WEAPON_SWORD.equals(droppedSubType)) {
+                droppedName = "Mač";
+                droppedEffect = "ATTACK_POWER";
+                droppedBonus = 0.05;
+            } else {
+                droppedName = "Luk i strela";
+                droppedEffect = "COIN_BONUS";
+                droppedBonus = 0.05;
+            }
+        } else {
+            droppedSubType = clothingTypes[random.nextInt(clothingTypes.length)];
+            droppedType = com.example.rpghabittracker.data.model.Equipment.TYPE_CLOTHING;
+            switch (droppedSubType) {
+                case com.example.rpghabittracker.data.model.Equipment.CLOTHING_GLOVES:
+                    droppedName = "Rukavice"; droppedEffect = "ATTACK_POWER"; droppedBonus = 0.10; break;
+                case com.example.rpghabittracker.data.model.Equipment.CLOTHING_SHIELD:
+                    droppedName = "Štit"; droppedEffect = "HIT_CHANCE"; droppedBonus = 0.10; break;
+                default: // BOOTS
+                    droppedName = "Čizme"; droppedEffect = "EXTRA_ATTACK"; droppedBonus = 0.40; break;
+            }
+        }
+
+        final String finalSubType = droppedSubType;
+        final String finalName = droppedName;
+        final String finalEffect = droppedEffect;
+        final double finalBonus = droppedBonus;
+        final String finalType = droppedType;
+
+        // Check if weapon already owned — if so, add 0.02% upgrade bonus (spec §6)
+        if (isWeaponDrop) {
+            db.collection("users").document(userIdForBattle)
+                    .collection("equipment").document(finalSubType)
+                    .get()
+                    .addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            // Duplicate weapon → +0.02% to bonus
+                            Number existing = (Number) doc.get("bonus");
+                            double newBonus = (existing != null ? existing.doubleValue() : finalBonus) + 0.0002;
+                            doc.getReference().update("bonus", newBonus);
+                            runOnUiThread(() -> Toast.makeText(this,
+                                    "Duplikat oružja! +" + finalName + " ojačan za 0.02%", Toast.LENGTH_SHORT).show());
+                        } else {
+                            saveDroppedEquipment(db, finalSubType, finalName, finalType, finalEffect, finalBonus);
+                        }
+                    });
+        } else {
+            // Clothing: always add/stack (same type stacks, spec §6)
+            saveDroppedEquipment(db, finalSubType, finalName, finalType, finalEffect, finalBonus);
+        }
+    }
+
+    private void saveDroppedEquipment(FirebaseFirestore db, String subType, String name,
+                                      String type, String effect, double bonus) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("name", name);
+        data.put("type", type);
+        data.put("subType", subType);
+        data.put("description", name + " (nagrada od bosa)");
+        data.put("quantity", 1);
+        data.put("active", false);
+        data.put("bonus", bonus);
+        data.put("effect", effect);
+        data.put("battlesRemaining", com.example.rpghabittracker.data.model.Equipment.TYPE_CLOTHING.equals(type) ? 2 : 0);
+        data.put("upgradeLevel", 1);
+
+        // Use a unique doc ID so multiple clothing drops of same type stack as separate entries
+        String docId = subType + "_" + System.currentTimeMillis();
+        db.collection("users").document(userIdForBattle)
+                .collection("equipment").document(docId)
+                .set(data)
+                .addOnSuccessListener(aVoid -> runOnUiThread(() ->
+                        Toast.makeText(this, "🎁 Dobili ste opremu: " + name + "!", Toast.LENGTH_LONG).show()));
     }
 
     private void progressBossLevel() {
@@ -804,8 +1052,8 @@ public class BattleActivity extends AppCompatActivity implements SensorEventList
         textResultTitle.setText("💀 PORAZ");
         textResultTitle.setTextColor(getColor(R.color.rpg_health));
         
-        if (attackCount >= MAX_ATTACKS) {
-            textResultMessage.setText("Iskoristili ste svih " + MAX_ATTACKS + " napada.\nBos je preživeo sa " + bossCurrentHp + " HP.");
+        if (attackCount >= maxAttacks) {
+            textResultMessage.setText("Iskoristili ste svih " + maxAttacks + " napada.\nBos je preživeo sa " + bossCurrentHp + " HP.");
         } else {
             textResultMessage.setText("Borba je završena.\nBos je preživeo sa " + bossCurrentHp + " HP.");
         }

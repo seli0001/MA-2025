@@ -20,9 +20,11 @@ import com.example.rpghabittracker.ui.adapters.CalendarAdapter;
 import com.example.rpghabittracker.ui.adapters.TaskAdapter;
 import com.example.rpghabittracker.ui.tasks.TaskDetailsActivity;
 import com.example.rpghabittracker.ui.viewmodel.TaskViewModel;
+import com.example.rpghabittracker.utils.AllianceMissionManager;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -304,6 +306,12 @@ public class CalendarActivity extends AppCompatActivity implements
     public void onTaskComplete(Task task, boolean isChecked) {
         if (isChecked) {
             taskViewModel.completeTask(task, () -> {
+                AllianceMissionManager.recordTaskCompletion(
+                        FirebaseFirestore.getInstance(),
+                        userId,
+                        task,
+                        null
+                );
                 runOnUiThread(() -> loadTasksForSelectedDate());
             });
         }

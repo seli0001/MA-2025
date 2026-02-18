@@ -9,6 +9,7 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.example.rpghabittracker.R;
+import com.example.rpghabittracker.notifications.AppNotificationManager;
 import com.example.rpghabittracker.ui.auth.LoginActivity;
 import com.example.rpghabittracker.ui.battle.BattleActivity;
 import com.example.rpghabittracker.ui.fragments.HomeFragment;
@@ -21,6 +22,8 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 public class MainActivity extends AppCompatActivity {
     
@@ -36,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private ProfileFragment profileFragment;
     
     private Fragment activeFragment;
+    private ListenerRegistration notificationListenerRegistration;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
         }
         
         setContentView(R.layout.activity_main);
+        AppNotificationManager.ensureNotificationChannel(this);
         
         // Initialize ViewModel and sync user first, then load fragments
         userViewModel = new ViewModelProvider(this).get(UserViewModel.class);
@@ -73,6 +78,18 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        startNotificationListener();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        stopNotificationListener();
+    }
     
     private void syncUserToLocalDatabase(FirebaseUser firebaseUser) {
         // This ensures the user exists in local Room database
@@ -93,6 +110,24 @@ public class MainActivity extends AppCompatActivity {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void startNotificationListener() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null || notificationListenerRegistration != null) return;
+
+        notificationListenerRegistration = AppNotificationManager.listenForUserNotifications(
+                this,
+                FirebaseFirestore.getInstance(),
+                user.getUid()
+        );
+    }
+
+    private void stopNotificationListener() {
+        if (notificationListenerRegistration != null) {
+            notificationListenerRegistration.remove();
+            notificationListenerRegistration = null;
+        }
     }
     
     private void initializeViews() {

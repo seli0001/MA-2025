@@ -18,6 +18,7 @@ import com.example.rpghabittracker.R;
 import com.example.rpghabittracker.data.model.Equipment;
 import com.example.rpghabittracker.ui.adapters.ShopItemAdapter;
 import com.example.rpghabittracker.ui.viewmodel.UserViewModel;
+import com.example.rpghabittracker.utils.AllianceMissionManager;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.auth.FirebaseAuth;
@@ -87,23 +88,27 @@ public class ShopFragment extends Fragment implements ShopItemAdapter.OnItemClic
     private void setupViewModel() {
         // Use requireActivity() to share ViewModel with MainActivity
         userViewModel = new ViewModelProvider(requireActivity()).get(UserViewModel.class);
-        
+
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
             userId = user.getUid();
             userViewModel.setUserId(userId);
-            
+
             // Observe user data from ViewModel (Room)
             userViewModel.getCurrentUser().observe(getViewLifecycleOwner(), userData -> {
                 if (userData != null) {
                     userCoins = userData.getCoins();
-                    userLevel = userData.getLevel();
+                    int newLevel = userData.getLevel();
+                    boolean levelChanged = newLevel != userLevel;
+                    userLevel = newLevel;
                     textCoins.setText(String.valueOf(userCoins));
-                    
+
                     // Update adapters with new coin count
                     if (potionsAdapter != null) potionsAdapter.setUserCoins(userCoins);
                     if (clothingAdapter != null) clothingAdapter.setUserCoins(userCoins);
-                    if (weaponsAdapter != null) weaponsAdapter.setUserCoins(userCoins);
+
+                    // Reload shop prices whenever level changes (prices depend on level)
+                    if (levelChanged) loadShopItems();
                 }
             });
             
@@ -130,8 +135,9 @@ public class ShopFragment extends Fragment implements ShopItemAdapter.OnItemClic
                         if (clothingAdapter != null) clothingAdapter.setUserCoins(userCoins);
                         if (weaponsAdapter != null) weaponsAdapter.setUserCoins(userCoins);
                     }
-                    if (level != null) {
+                    if (level != null && level.intValue() != userLevel) {
                         userLevel = level.intValue();
+                        loadShopItems();
                     }
                 });
     }
@@ -139,56 +145,48 @@ public class ShopFragment extends Fragment implements ShopItemAdapter.OnItemClic
     private void setupAdapters() {
         potionsAdapter = new ShopItemAdapter(this);
         clothingAdapter = new ShopItemAdapter(this);
-        weaponsAdapter = new ShopItemAdapter(this);
-        
+
         recyclerPotions.setAdapter(potionsAdapter);
         recyclerClothing.setAdapter(clothingAdapter);
-        recyclerWeapons.setAdapter(weaponsAdapter);
+
+        // Weapons are NOT available in the shop (boss-drop only per spec §6)
+        recyclerWeapons.setVisibility(View.GONE);
     }
     
     private void setupTabs() {
         tabLayout.removeAllTabs();
         tabLayout.addTab(tabLayout.newTab().setText("Sve"));
         tabLayout.addTab(tabLayout.newTab().setText("Napici"));
-        tabLayout.addTab(tabLayout.newTab().setText("Oprema"));
-        tabLayout.addTab(tabLayout.newTab().setText("Oružje"));
-        
+        tabLayout.addTab(tabLayout.newTab().setText("Odeća"));
+        // No weapons tab — weapons can only be obtained from boss battles (spec §6)
+
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 filterByCategory(tab.getPosition());
             }
-            
+
             @Override
             public void onTabUnselected(TabLayout.Tab tab) {}
-            
+
             @Override
             public void onTabReselected(TabLayout.Tab tab) {}
         });
     }
-    
+
     private void filterByCategory(int position) {
-        // Show/hide sections based on selected tab
         switch (position) {
-            case 0: // All
+            case 0: // Sve
                 showSection(recyclerPotions, true);
                 showSection(recyclerClothing, true);
-                showSection(recyclerWeapons, true);
                 break;
-            case 1: // Potions
+            case 1: // Napici
                 showSection(recyclerPotions, true);
                 showSection(recyclerClothing, false);
-                showSection(recyclerWeapons, false);
                 break;
-            case 2: // Clothing
+            case 2: // Odeća
                 showSection(recyclerPotions, false);
                 showSection(recyclerClothing, true);
-                showSection(recyclerWeapons, false);
-                break;
-            case 3: // Weapons
-                showSection(recyclerPotions, false);
-                showSection(recyclerClothing, false);
-                showSection(recyclerWeapons, true);
                 break;
         }
     }
@@ -204,47 +202,88 @@ public class ShopFragment extends Fragment implements ShopItemAdapter.OnItemClic
         view.setVisibility(show ? View.VISIBLE : View.GONE);
     }
     
+    /**
+     * Calculates the boss coin reward for a given level.
+     * Level 1 boss = 200 coins; each subsequent boss = previous * 1.2 (spec §8.5).
+     */
+    private int getBossRewardForLevel(int level) {
+        int reward = 200;
+        for (int i = 2; i <= level; i++) {
+            reward = (int) Math.round(reward * 1.2);
+        }
+        return reward;
+    }
+
     private void loadShopItems() {
-        // Create shop items based on equipment types
+        // View can outlive async callbacks; guard against early/late calls.
+        if (potionsAdapter == null || clothingAdapter == null) {
+            return;
+        }
+
+        // "prethodni nivo" reference = boss at end of (userLevel - 1), min level 1 (spec §6)
+        int referenceLevel = Math.max(1, userLevel - 1);
+        int bossReward = getBossRewardForLevel(referenceLevel);
+
+        // ---- POTIONS (shop only, spec §6) ----
         List<ShopItemAdapter.ShopItem> potions = new ArrayList<>();
-        potions.add(new ShopItemAdapter.ShopItem("potion_health", "Napitak zdravlja", 
-                "Vraća 50 HP u bici", Equipment.TYPE_POTION, 100, "RESTORE_HP", 50));
-        potions.add(new ShopItemAdapter.ShopItem("potion_power", "Napitak snage", 
-                "+10 PP za jednu bitku", Equipment.TYPE_POTION, 150, "BOOST_PP", 10));
-        potions.add(new ShopItemAdapter.ShopItem("potion_luck", "Napitak sreće", 
-                "+20% šanse za kritičan udarac", Equipment.TYPE_POTION, 200, "CRIT_CHANCE", 0.2));
-        potions.add(new ShopItemAdapter.ShopItem("potion_shield", "Napitak štita", 
-                "Smanjuje štetu za 30%", Equipment.TYPE_POTION, 250, "DAMAGE_REDUCTION", 0.3));
-        
+        potions.add(new ShopItemAdapter.ShopItem(
+                Equipment.POTION_PP_20,
+                "Napitak snage (jednokratni)",
+                "Povećava PP za 20% u jednoj borbi",
+                Equipment.TYPE_POTION,
+                (int) (bossReward * 0.5),
+                "BOOST_PP_SINGLE", 0.20));
+        potions.add(new ShopItemAdapter.ShopItem(
+                Equipment.POTION_PP_40,
+                "Napitak moći (jednokratni)",
+                "Povećava PP za 40% u jednoj borbi",
+                Equipment.TYPE_POTION,
+                (int) (bossReward * 0.7),
+                "BOOST_PP_SINGLE", 0.40));
+        potions.add(new ShopItemAdapter.ShopItem(
+                Equipment.POTION_PP_5_PERM,
+                "Napitak snage (trajni)",
+                "Trajno povećava PP za 5%",
+                Equipment.TYPE_POTION,
+                (int) (bossReward * 2.0),
+                "BOOST_PP_PERMANENT", 0.05));
+        potions.add(new ShopItemAdapter.ShopItem(
+                Equipment.POTION_PP_10_PERM,
+                "Napitak moći (trajni)",
+                "Trajno povećava PP za 10%",
+                Equipment.TYPE_POTION,
+                (int) (bossReward * 10.0),
+                "BOOST_PP_PERMANENT", 0.10));
+
+        // ---- CLOTHING (shop or boss drop, spec §6) ----
         List<ShopItemAdapter.ShopItem> clothing = new ArrayList<>();
-        clothing.add(new ShopItemAdapter.ShopItem("armor_warrior", "Oklop ratnika", 
-                "+5% smanjenje štete", Equipment.TYPE_CLOTHING, 500, "DAMAGE_REDUCTION", 0.05));
-        clothing.add(new ShopItemAdapter.ShopItem("boots_swift", "Čizme brzine", 
-                "+10% brzine napada", Equipment.TYPE_CLOTHING, 400, "ATTACK_SPEED", 0.1));
-        clothing.add(new ShopItemAdapter.ShopItem("cloak_magic", "Magični ogrtač", 
-                "+5% XP bonus", Equipment.TYPE_CLOTHING, 600, "XP_BONUS", 0.05));
-        clothing.add(new ShopItemAdapter.ShopItem("helmet_dragon", "Kaciga zmaja", 
-                "+15% snage napada", Equipment.TYPE_CLOTHING, 800, "ATTACK_POWER", 0.15));
-        
-        List<ShopItemAdapter.ShopItem> weapons = new ArrayList<>();
-        weapons.add(new ShopItemAdapter.ShopItem("weapon_iron_sword", "Gvozdeni mač", 
-                "Osnovno oružje", Equipment.TYPE_WEAPON, 300, "ATTACK_POWER", 1.0));
-        weapons.add(new ShopItemAdapter.ShopItem("weapon_steel_axe", "Čelična sekira", 
-                "+20% štete", Equipment.TYPE_WEAPON, 800, "ATTACK_POWER", 1.2));
-        weapons.add(new ShopItemAdapter.ShopItem("weapon_dragon_blade", "Oštrica zmaja", 
-                "+50% štete", Equipment.TYPE_WEAPON, 2000, "ATTACK_POWER", 1.5));
-        weapons.add(new ShopItemAdapter.ShopItem("weapon_legendary", "Legendarni mač", 
-                "+100% štete, +10% crit", Equipment.TYPE_WEAPON, 5000, "ATTACK_POWER", 2.0));
-        
-        // Set items to adapters
+        clothing.add(new ShopItemAdapter.ShopItem(
+                Equipment.CLOTHING_GLOVES,
+                "Rukavice",
+                "+10% snage napada, traju 2 borbe",
+                Equipment.TYPE_CLOTHING,
+                (int) (bossReward * 0.6),
+                "ATTACK_POWER", 0.10));
+        clothing.add(new ShopItemAdapter.ShopItem(
+                Equipment.CLOTHING_SHIELD,
+                "Štit",
+                "+10% šanse za uspešan napad, traje 2 borbe",
+                Equipment.TYPE_CLOTHING,
+                (int) (bossReward * 0.6),
+                "HIT_CHANCE", 0.10));
+        clothing.add(new ShopItemAdapter.ShopItem(
+                Equipment.CLOTHING_BOOTS,
+                "Čizme",
+                "40% šansa za jedan dodatni napad, traju 2 borbe",
+                Equipment.TYPE_CLOTHING,
+                (int) (bossReward * 0.8),
+                "EXTRA_ATTACK", 0.40));
+
+        // Weapons are NOT available in shop — boss-drop only (spec §6)
         potionsAdapter.setItems(potions);
         clothingAdapter.setItems(clothing);
-        weaponsAdapter.setItems(weapons);
-        
-        // Set initial coins
         potionsAdapter.setUserCoins(userCoins);
         clothingAdapter.setUserCoins(userCoins);
-        weaponsAdapter.setUserCoins(userCoins);
     }
     
     @Override
@@ -266,10 +305,19 @@ public class ShopFragment extends Fragment implements ShopItemAdapter.OnItemClic
         
         // Deduct coins through ViewModel
         userViewModel.spendCoins(item.price, (success, errorMessage) -> {
-            requireActivity().runOnUiThread(() -> {
+            if (!isAdded() || getActivity() == null) {
+                return;
+            }
+            getActivity().runOnUiThread(() -> {
+                if (!isAdded()) return;
                 if (success) {
                     Toast.makeText(requireContext(), "Kupili ste " + item.name + "!", Toast.LENGTH_SHORT).show();
                     item.ownedCount++;
+
+                    // Special mission rule: any shop purchase can damage alliance mission boss.
+                    if (userId != null && !userId.trim().isEmpty()) {
+                        AllianceMissionManager.recordShopPurchase(FirebaseFirestore.getInstance(), userId, null);
+                    }
                     
                     // TODO: Save item to user's inventory in Firestore
                     saveItemToInventory(item);
@@ -300,11 +348,14 @@ public class ShopFragment extends Fragment implements ShopItemAdapter.OnItemClic
                         Map<String, Object> equipmentData = new HashMap<>();
                         equipmentData.put("name", item.name);
                         equipmentData.put("type", item.type);
+                        equipmentData.put("subType", item.id); // item.id = subType constant
                         equipmentData.put("description", item.description);
                         equipmentData.put("quantity", 1);
                         equipmentData.put("active", false);
                         equipmentData.put("bonus", item.effectValue);
-                        equipmentData.put("battlesRemaining", 0);
+                        // Clothing starts inactive; battlesRemaining set to 2 on activation
+                        equipmentData.put("battlesRemaining",
+                                Equipment.TYPE_CLOTHING.equals(item.type) ? 2 : 0);
                         equipmentData.put("effect", item.effect);
                         
                         db.collection("users").document(userId)
@@ -316,12 +367,13 @@ public class ShopFragment extends Fragment implements ShopItemAdapter.OnItemClic
     }
     
     private void updateAdapters() {
-        if (getActivity() != null) {
-            getActivity().runOnUiThread(() -> {
-                potionsAdapter.notifyDataSetChanged();
-                clothingAdapter.notifyDataSetChanged();
-                weaponsAdapter.notifyDataSetChanged();
-            });
-        }
+        if (!isAdded() || getActivity() == null) return;
+
+        getActivity().runOnUiThread(() -> {
+            if (!isAdded()) return;
+            if (potionsAdapter != null) potionsAdapter.notifyDataSetChanged();
+            if (clothingAdapter != null) clothingAdapter.notifyDataSetChanged();
+            if (weaponsAdapter != null) weaponsAdapter.notifyDataSetChanged();
+        });
     }
 }

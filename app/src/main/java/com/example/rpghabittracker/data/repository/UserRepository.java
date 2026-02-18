@@ -227,12 +227,17 @@ public class UserRepository {
                 : null);
         userData.put("email", user.getEmail());
         userData.put("avatar", user.getAvatar());
+        userData.put("createdAt", user.getCreatedAt());
+        userData.put("lastLoginAt", user.getLastLoginAt());
         userData.put("level", user.getLevel());
         userData.put("title", user.getTitle());
         userData.put("xp", user.getExperiencePoints());
         userData.put("coins", user.getCoins());
         userData.put("powerPoints", user.getPowerPoints());
         userData.put("basePowerPoints", user.getBasePowerPoints());
+        userData.put("currentLevelStartTime", user.getCurrentLevelStartTime());
+        userData.put("tasksCompletedThisLevel", user.getTasksCompletedThisLevel());
+        userData.put("tasksCreatedThisLevel", user.getTasksCreatedThisLevel());
         userData.put("totalTasksCompleted", user.getTotalTasksCompleted());
         userData.put("totalTasksCreated", user.getTotalTasksCreated());
         userData.put("totalTasksFailed", user.getTotalTasksFailed());
@@ -347,7 +352,18 @@ public class UserRepository {
         User user = new User(resolvedEmail, "", resolvedUsername, resolvedAvatar);
         user.setId(firebaseUid);
         user.setActive(true);
-        user.setLastLoginAt(System.currentTimeMillis());
+
+        Long createdAt = doc.getLong("createdAt");
+        if (createdAt != null && createdAt > 0) {
+            user.setCreatedAt(createdAt);
+        }
+
+        Long lastLoginAt = doc.getLong("lastLoginAt");
+        if (lastLoginAt != null && lastLoginAt > 0) {
+            user.setLastLoginAt(lastLoginAt);
+        } else {
+            user.setLastLoginAt(System.currentTimeMillis());
+        }
         
         // Load saved data from Firestore
         Long level = doc.getLong("level");
@@ -361,16 +377,31 @@ public class UserRepository {
         
         Long coins = doc.getLong("coins");
         if (coins != null) user.setCoins(coins.intValue());
-        
-        Long pp = doc.getLong("powerPoints");
-        if (pp != null && pp > 0) {
-            user.setPowerPoints(pp.intValue());
-            user.setBasePowerPoints(pp.intValue());
-        } else {
-            int initialPp = user.getPpForCurrentLevel();
-            user.setPowerPoints(initialPp);
-            user.setBasePowerPoints(initialPp);
+
+        Long currentLevelStartTime = doc.getLong("currentLevelStartTime");
+        if (currentLevelStartTime != null && currentLevelStartTime > 0) {
+            user.setCurrentLevelStartTime(currentLevelStartTime);
+        } else if (createdAt != null && createdAt > 0) {
+            // Legacy users may miss stage timestamp; use account creation as best-effort fallback.
+            user.setCurrentLevelStartTime(createdAt);
         }
+        
+        int defaultBasePp = user.getPpForCurrentLevel();
+        Long basePp = doc.getLong("basePowerPoints");
+        int resolvedBasePp = basePp != null ? Math.max(0, basePp.intValue()) : defaultBasePp;
+
+        Long pp = doc.getLong("powerPoints");
+        int resolvedPowerPp = pp != null ? Math.max(0, pp.intValue()) : resolvedBasePp;
+        int equipmentBonus = Math.max(0, resolvedPowerPp - resolvedBasePp);
+
+        // Normalize base PP to current formula (legacy data may contain old cumulative values).
+        if (resolvedBasePp != defaultBasePp) {
+            resolvedBasePp = defaultBasePp;
+        }
+        resolvedPowerPp = resolvedBasePp + equipmentBonus;
+
+        user.setBasePowerPoints(resolvedBasePp);
+        user.setPowerPoints(resolvedPowerPp);
         
         Long totalCompleted = doc.getLong("totalTasksCompleted");
         if (totalCompleted != null) user.setTotalTasksCompleted(totalCompleted.intValue());
@@ -383,6 +414,16 @@ public class UserRepository {
         
         Long longestStreak = doc.getLong("longestStreak");
         if (longestStreak != null) user.setLongestStreak(longestStreak.intValue());
+
+        Long tasksCompletedThisLevel = doc.getLong("tasksCompletedThisLevel");
+        if (tasksCompletedThisLevel != null) {
+            user.setTasksCompletedThisLevel(Math.max(0, tasksCompletedThisLevel.intValue()));
+        }
+
+        Long tasksCreatedThisLevel = doc.getLong("tasksCreatedThisLevel");
+        if (tasksCreatedThisLevel != null) {
+            user.setTasksCreatedThisLevel(Math.max(0, tasksCreatedThisLevel.intValue()));
+        }
         
         @SuppressWarnings("unchecked")
         List<String> badges = (List<String>) doc.get("badges");
@@ -453,6 +494,13 @@ public class UserRepository {
         int updatedXp = currentXp + safeGain;
         boolean leveledUp = false;
 
+        int expectedBaseAtCurrentLevel = User.getBasePpForLevel(currentLevel);
+        int storedBase = Math.max(0, user.getBasePowerPoints());
+        int storedTotal = Math.max(0, user.getPowerPoints());
+        int equipmentBonus = Math.max(0, storedTotal - storedBase);
+        int basePowerPoints = expectedBaseAtCurrentLevel;
+        int totalPowerPoints = basePowerPoints + equipmentBonus;
+
         while (true) {
             int requiredXp = cumulativeXpModel
                     ? User.getXpForLevel(currentLevel + 1)
@@ -470,10 +518,10 @@ public class UserRepository {
             user.setLevel(currentLevel);
             leveledUp = true;
 
-            // Award PP for level up
-            int ppReward = user.getPpForCurrentLevel();
-            user.setBasePowerPoints(user.getBasePowerPoints() + ppReward);
-            user.setPowerPoints(user.getPowerPoints() + ppReward);
+            // Set PP for reached level using current progression model.
+            int ppReward = User.getPpRewardForReachedLevel(currentLevel);
+            basePowerPoints = User.getBasePpForLevel(currentLevel);
+            totalPowerPoints = basePowerPoints + equipmentBonus;
 
             // Update title
             String newTitle = getTitleForLevel(currentLevel);
@@ -487,6 +535,8 @@ public class UserRepository {
             android.util.Log.d("UserRepository", "Level up! New level: " + currentLevel + ", PP reward: " + ppReward);
         }
 
+        user.setBasePowerPoints(basePowerPoints);
+        user.setPowerPoints(totalPowerPoints);
         user.setExperiencePoints(updatedXp);
         return leveledUp;
     }
@@ -497,10 +547,8 @@ public class UserRepository {
     }
 
     private int getStageXpRequiredForNextLevel(int level) {
-        int safeLevel = Math.max(1, level);
-        int nextThreshold = User.getXpForLevel(safeLevel + 1);
-        int currentThreshold = safeLevel > 1 ? User.getXpForLevel(safeLevel) : 0;
-        return Math.max(1, nextThreshold - currentThreshold);
+        // getXpForLevel(1)=200, getXpForLevel(2)=500, etc. — each is the XP needed within that level
+        return User.getXpForLevel(Math.max(1, level));
     }
     
     // Get user power points
@@ -508,17 +556,22 @@ public class UserRepository {
         executor.execute(() -> {
             User user = userDao.getUserByIdSync(userId);
             if (user != null) {
-                int pp = user.getPowerPoints();
-                if (pp <= 0) {
-                    pp = user.getPpForCurrentLevel();
+                int expectedBasePp = user.getPpForCurrentLevel();
+                int storedBasePp = Math.max(0, user.getBasePowerPoints());
+                int storedPp = Math.max(0, user.getPowerPoints());
+                int equipmentBonus = Math.max(0, storedPp - storedBasePp);
+                int basePp = expectedBasePp;
+                int pp = basePp + equipmentBonus;
+
+                if (pp != user.getPowerPoints() || basePp != user.getBasePowerPoints()) {
                     user.setPowerPoints(pp);
-                    user.setBasePowerPoints(pp);
+                    user.setBasePowerPoints(basePp);
                     userDao.update(user);
                     syncToFirestore(user);
                 }
                 callback.onResult(pp);
             } else {
-                callback.onResult(40); // Default PP for level 1
+                callback.onResult(0); // Default PP for level 1
             }
         });
     }

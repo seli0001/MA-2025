@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData;
 
 import com.example.rpghabittracker.data.local.AppDatabase;
 import com.example.rpghabittracker.data.local.dao.CategoryDao;
+import com.example.rpghabittracker.data.local.dao.TaskDao;
 import com.example.rpghabittracker.data.model.Category;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -31,6 +32,7 @@ public class CategoryRepository {
     private static final String COLLECTION_CATEGORIES = "categories";
     
     private final CategoryDao categoryDao;
+    private final TaskDao taskDao;
     private final FirebaseFirestore firestore;
     private final ExecutorService executor;
     private ListenerRegistration categoriesListener;
@@ -62,6 +64,7 @@ public class CategoryRepository {
     public CategoryRepository(Application application) {
         AppDatabase db = AppDatabase.getInstance(application);
         categoryDao = db.categoryDao();
+        taskDao = db.taskDao();
         firestore = FirebaseFirestore.getInstance();
         executor = Executors.newSingleThreadExecutor();
     }
@@ -261,6 +264,14 @@ public class CategoryRepository {
         });
     }
     
+    // Check if any task references this category (prevents deletion)
+    public void isCategoryInUse(String categoryId, ColorCheckCallback callback) {
+        executor.execute(() -> {
+            int count = taskDao.countTasksByCategory(categoryId);
+            callback.onResult(count > 0);
+        });
+    }
+
     // Callbacks
     public interface CategoryCallback {
         void onResult(Category category);

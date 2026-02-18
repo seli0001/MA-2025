@@ -37,6 +37,12 @@ public class AllianceMemberAdapter extends RecyclerView.Adapter<AllianceMemberAd
         AllianceActivity.MemberItem member = members.get(position);
         holder.textUsername.setText(member.username);
         holder.textLevel.setText("Level " + member.level);
+        if (member.missionDamage > 0) {
+            holder.textMissionDamage.setVisibility(View.VISIBLE);
+            holder.textMissionDamage.setText("Doprinos misiji: " + member.missionDamage + " HP");
+        } else {
+            holder.textMissionDamage.setVisibility(View.GONE);
+        }
         
         int avatarRes = getAvatarResource(member.avatar);
         holder.imageAvatar.setImageResource(avatarRes);
@@ -63,12 +69,14 @@ public class AllianceMemberAdapter extends RecyclerView.Adapter<AllianceMemberAd
         ImageView imageAvatar;
         TextView textUsername;
         TextView textLevel;
+        TextView textMissionDamage;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             imageAvatar = itemView.findViewById(R.id.imageAvatar);
             textUsername = itemView.findViewById(R.id.textUsername);
             textLevel = itemView.findViewById(R.id.textLevel);
+            textMissionDamage = itemView.findViewById(R.id.textMissionDamage);
         }
     }
 }

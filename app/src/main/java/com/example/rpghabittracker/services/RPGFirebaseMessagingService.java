@@ -1,7 +1,6 @@
 package com.example.rpghabittracker.services;
 
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
+import android.Manifest;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Build;
@@ -9,8 +8,11 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 import com.example.rpghabittracker.R;
+import com.example.rpghabittracker.notifications.AppNotificationManager;
 import com.example.rpghabittracker.ui.home.MainActivity;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
@@ -21,13 +23,11 @@ import com.google.firebase.messaging.RemoteMessage;
 public class RPGFirebaseMessagingService extends FirebaseMessagingService {
     
     private static final String TAG = "RPGFCMService";
-    private static final String CHANNEL_ID = "rpg_habit_tracker_channel";
-    private static final String CHANNEL_NAME = "RPG Habit Tracker Notifications";
     
     @Override
     public void onCreate() {
         super.onCreate();
-        createNotificationChannel();
+        AppNotificationManager.ensureNotificationChannel(this);
     }
     
     /**
@@ -111,6 +111,12 @@ public class RPGFirebaseMessagingService extends FirebaseMessagingService {
      * Display notification
      */
     private void showNotification(String title, String body) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         
@@ -121,39 +127,15 @@ public class RPGFirebaseMessagingService extends FirebaseMessagingService {
             PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
         );
         
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, AppNotificationManager.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent);
-        
-        NotificationManager notificationManager = 
-            (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        
-        if (notificationManager != null) {
-            notificationManager.notify(0, builder.build());
-        }
-    }
-    
-    /**
-     * Create notification channel for Android 8.0+
-     */
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH
-            );
-            channel.setDescription("Notifications for RPG Habit Tracker events");
-            
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            if (notificationManager != null) {
-                notificationManager.createNotificationChannel(channel);
-            }
-        }
+
+        NotificationManagerCompat.from(this).notify(0, builder.build());
     }
     
     /**

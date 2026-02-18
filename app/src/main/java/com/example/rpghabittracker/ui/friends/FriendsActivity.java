@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.rpghabittracker.R;
+import com.example.rpghabittracker.notifications.AppNotificationManager;
 import com.example.rpghabittracker.ui.adapters.FriendAdapter;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -488,6 +489,18 @@ public class FriendsActivity extends AppCompatActivity implements FriendAdapter.
                 .set(friendship)
                 .addOnSuccessListener(aVoid -> {
                     sentRequestIds.add(receiverId);
+
+                    String senderName = currentUsername != null && !currentUsername.trim().isEmpty()
+                            ? currentUsername
+                            : "Korisnik";
+                    AppNotificationManager.createFriendRequestNotification(
+                            firestore,
+                            receiverId,
+                            currentUserId,
+                            senderName,
+                            friendshipId
+                    );
+
                     Toast.makeText(this, "Zahtev za prijateljstvo poslat!", Toast.LENGTH_SHORT).show();
                     adapter.notifyDataSetChanged();
                 })
@@ -515,6 +528,23 @@ public class FriendsActivity extends AppCompatActivity implements FriendAdapter.
         firestore.collection("friendships").document(friendshipId)
                 .update("status", "ACCEPTED")
                 .addOnSuccessListener(aVoid -> {
+                    String acceptorName = currentUsername != null && !currentUsername.trim().isEmpty()
+                            ? currentUsername
+                            : "Korisnik";
+                    AppNotificationManager.createFriendRequestAcceptedNotification(
+                            firestore,
+                            user.id,
+                            currentUserId,
+                            acceptorName
+                    );
+                    AppNotificationManager.resolveFriendRequestNotification(
+                            firestore,
+                            this,
+                            currentUserId,
+                            friendshipId,
+                            "ACCEPTED"
+                    );
+
                     receivedRequestIds.remove(user.id);
                     friendIds.add(user.id);
                     Toast.makeText(this, "Zahtev prihvaćen!", Toast.LENGTH_SHORT).show();
@@ -532,6 +562,13 @@ public class FriendsActivity extends AppCompatActivity implements FriendAdapter.
         firestore.collection("friendships").document(friendshipId)
                 .update("status", "REJECTED")
                 .addOnSuccessListener(aVoid -> {
+                    AppNotificationManager.resolveFriendRequestNotification(
+                            firestore,
+                            this,
+                            currentUserId,
+                            friendshipId,
+                            "REJECTED"
+                    );
                     receivedRequestIds.remove(user.id);
                     Toast.makeText(this, "Zahtev odbijen", Toast.LENGTH_SHORT).show();
                     loadFriendRequests();

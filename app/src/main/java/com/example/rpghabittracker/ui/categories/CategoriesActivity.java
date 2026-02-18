@@ -164,16 +164,27 @@ public class CategoriesActivity extends AppCompatActivity implements CategoryAda
 
     @Override
     public void onDeleteClick(Category category) {
-        new MaterialAlertDialogBuilder(this)
-                .setTitle("Obriši kategoriju")
-                .setMessage("Da li ste sigurni da želite da obrišete kategoriju \"" + 
-                           category.getName() + "\"?")
-                .setPositiveButton("Obriši", (dialog, which) -> {
-                    categoryViewModel.deleteCategory(category);
-                    Toast.makeText(this, "Kategorija obrisana", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Otkaži", null)
-                .show();
+        categoryViewModel.isCategoryInUse(category.getId(), isInUse -> runOnUiThread(() -> {
+            if (isInUse) {
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle("Nije moguće obrisati")
+                        .setMessage("Kategorija \"" + category.getName() +
+                                "\" se koristi u jednom ili više zadataka i ne može biti obrisana.")
+                        .setPositiveButton("U redu", null)
+                        .show();
+            } else {
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle("Obriši kategoriju")
+                        .setMessage("Da li ste sigurni da želite da obrišete kategoriju \"" +
+                                category.getName() + "\"?")
+                        .setPositiveButton("Obriši", (dialog, which) -> {
+                            categoryViewModel.deleteCategory(category);
+                            Toast.makeText(this, "Kategorija obrisana", Toast.LENGTH_SHORT).show();
+                        })
+                        .setNegativeButton("Otkaži", null)
+                        .show();
+            }
+        }));
     }
 
     private void showEditCategoryDialog(Category category) {

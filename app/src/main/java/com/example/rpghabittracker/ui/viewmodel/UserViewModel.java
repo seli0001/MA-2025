@@ -88,7 +88,7 @@ public class UserViewModel extends AndroidViewModel {
                     levelUpEvent.postValue(new LevelUpEvent(
                             updatedUser.getLevel(),
                             updatedUser.getTitle(),
-                            updatedUser.getPpForCurrentLevel()
+                            User.getPpRewardForReachedLevel(updatedUser.getLevel())
                     ));
                 }
             }
@@ -115,7 +115,7 @@ public class UserViewModel extends AndroidViewModel {
                     levelUpEvent.postValue(new LevelUpEvent(
                             updatedUser.getLevel(),
                             updatedUser.getTitle(),
-                            updatedUser.getPpForCurrentLevel()
+                            User.getPpRewardForReachedLevel(updatedUser.getLevel())
                     ));
                 }
             }
@@ -233,7 +233,7 @@ public class UserViewModel extends AndroidViewModel {
     public void getUserPowerPoints(PowerPointsCallback callback) {
         String userId = currentUserId.getValue();
         if (userId == null) {
-            callback.onResult(40); // Default
+            callback.onResult(0); // Default
             return;
         }
         repository.getUserPowerPoints(userId, callback::onResult);

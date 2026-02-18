@@ -6,9 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,6 +15,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.rpghabittracker.R;
 import com.example.rpghabittracker.data.model.Boss;
+import com.example.rpghabittracker.data.model.Task;
 import com.example.rpghabittracker.data.model.User;
 import com.example.rpghabittracker.ui.battle.BattleActivity;
 import com.example.rpghabittracker.ui.viewmodel.UserViewModel;
@@ -24,34 +23,40 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
 /**
- * HomeFragment - Main dashboard with player stats, boss info, and daily tasks
+ * HomeFragment - Main dashboard with core player and boss information.
  */
 public class HomeFragment extends Fragment {
     
     // UI Elements
-    private TextView greetingText, usernameText, levelText, xpText, coinsText;
-    private TextView tasksCompletedText, streakText;
+    private TextView usernameText, levelText, xpText, coinsText;
+    private TextView streakText;
     private TextView bossNameText, bossLevelText, bossHpText;
     private View xpProgressBar, bossHpBar;
-    private MaterialButton attackButton, addFirstTaskButton;
-    private MaterialCardView bossCard, emptyTasksCard;
-    private TextView seeAllTasksText;
+    private MaterialButton attackButton;
+    private MaterialCardView bossCard;
     
     private UserViewModel userViewModel;
     private FirebaseFirestore db;
     private ListenerRegistration userListener;
+    private ListenerRegistration tasksListener;
     
     // User data
     private int currentLevel = 1;
     private int currentXp = 0;
     private int xpForNextLevel = 200;
     private int coins = 0;
-    private int tasksCompleted = 0;
-    private int totalTasks = 0;
     private int streak = 0;
     
     // Boss data
@@ -97,16 +102,19 @@ public class HomeFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Remove Firestore listener
+        // Remove Firestore listeners
         if (userListener != null) {
             userListener.remove();
             userListener = null;
+        }
+        if (tasksListener != null) {
+            tasksListener.remove();
+            tasksListener = null;
         }
     }
     
     private void initializeViews(View view) {
         // Header
-        greetingText = view.findViewById(R.id.greetingText);
         usernameText = view.findViewById(R.id.usernameText);
         
         // Level & XP
@@ -116,7 +124,6 @@ public class HomeFragment extends Fragment {
         xpProgressBar = view.findViewById(R.id.xpProgressBar);
         
         // Quick Stats
-        tasksCompletedText = view.findViewById(R.id.tasksCompletedText);
         streakText = view.findViewById(R.id.streakText);
         
         // Boss
@@ -126,11 +133,6 @@ public class HomeFragment extends Fragment {
         bossHpText = view.findViewById(R.id.bossHpText);
         bossHpBar = view.findViewById(R.id.bossHpBar);
         attackButton = view.findViewById(R.id.attackButton);
-        
-        // Tasks
-        seeAllTasksText = view.findViewById(R.id.seeAllTasksText);
-        emptyTasksCard = view.findViewById(R.id.emptyTasksCard);
-        addFirstTaskButton = view.findViewById(R.id.addFirstTaskButton);
     }
     
     private void setupClickListeners() {
@@ -141,21 +143,7 @@ public class HomeFragment extends Fragment {
             intent.putExtra(BattleActivity.EXTRA_USER_LEVEL, currentLevel);
             startActivity(intent);
         });
-        
-        seeAllTasksText.setOnClickListener(v -> {
-            // Navigate to tasks tab
-            if (getActivity() != null) {
-                Toast.makeText(getActivity(), "Prelazak na zadatke", Toast.LENGTH_SHORT).show();
-            }
-        });
-        
-        addFirstTaskButton.setOnClickListener(v -> {
-            // Open add task dialog
-            if (getActivity() != null) {
-                Toast.makeText(getActivity(), "Dodavanje zadatka", Toast.LENGTH_SHORT).show();
-            }
-        });
-        
+
         bossCard.setOnClickListener(v -> {
             // Navigate to battle screen
             Intent intent = new Intent(requireContext(), BattleActivity.class);
@@ -178,16 +166,6 @@ public class HomeFragment extends Fragment {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         
         if (currentUser != null) {
-            // Set greeting based on time of day
-            int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
-            if (hour < 12) {
-                greetingText.setText("Dobro jutro! ☀️");
-            } else if (hour < 18) {
-                greetingText.setText("Dobar dan! 👋");
-            } else {
-                greetingText.setText("Dobro veče! 🌙");
-            }
-            
             // Set up realtime listener for Firestore user data
             if (userListener != null) {
                 userListener.remove();
@@ -213,15 +191,6 @@ public class HomeFragment extends Fragment {
                     
                     Long coinsVal = documentSnapshot.getLong("coins");
                     if (coinsVal != null) coins = coinsVal.intValue();
-                    
-                    Long streakVal = documentSnapshot.getLong("currentStreak");
-                    if (streakVal != null) streak = streakVal.intValue();
-                    
-                    Long totalCompleted = documentSnapshot.getLong("totalTasksCompleted");
-                    if (totalCompleted != null) tasksCompleted = totalCompleted.intValue();
-                    
-                    Long totalCreated = documentSnapshot.getLong("totalTasksCreated");
-                    if (totalCreated != null) totalTasks = totalCreated.intValue();
 
                     Long currentBossLevel = documentSnapshot.getLong("bossLevel");
                     bossLevel = (currentBossLevel != null && currentBossLevel > 0)
@@ -231,11 +200,13 @@ public class HomeFragment extends Fragment {
                     bossMaxHp = Boss.getBossHpForLevel(bossLevel);
                     bossHp = bossMaxHp;
                     
-                    // Calculate XP for next level
-                    xpForNextLevel = User.getXpForLevel(currentLevel + 1);
+                    // XP required to complete the current level (stage model from spec)
+                    xpForNextLevel = User.getXpForLevel(Math.max(1, currentLevel));
                     
                     updateUI();
                 });
+
+            startTaskStreakListener(currentUser.getUid());
         }
     }
     
@@ -246,33 +217,31 @@ public class HomeFragment extends Fragment {
         currentLevel = user.getLevel();
         currentXp = user.getExperiencePoints();
         coins = user.getCoins();
-        streak = user.getCurrentStreak();
-        tasksCompleted = user.getTotalTasksCompleted();
-        totalTasks = user.getTotalTasksCreated();
-        xpForNextLevel = User.getXpForLevel(currentLevel + 1);
+        xpForNextLevel = User.getXpForLevel(Math.max(1, currentLevel));
         
         updateUI();
-    }
-    
-    private void loadUserData() {
-        // Deprecated - kept for backwards compatibility
-        loadUserDataRealtime();
     }
     
     private void updateUI() {
         // Level & XP
         levelText.setText(String.valueOf(currentLevel));
-        
-        // Calculate XP progress with fallback for legacy stage-based XP values.
-        int xpForCurrentLevelThreshold = currentLevel > 1 ? User.getXpForLevel(currentLevel) : 0;
-        int xpNeededForNext = Math.max(1, xpForNextLevel - xpForCurrentLevelThreshold);
-        int xpProgress = currentXp - xpForCurrentLevelThreshold;
-        if (xpProgress < 0) {
-            xpNeededForNext = Math.max(1, User.getXpForLevel(currentLevel));
-            xpProgress = Math.min(Math.max(0, currentXp), xpNeededForNext);
+
+        int safeLevel = Math.max(1, currentLevel);
+        int safeXp = Math.max(0, currentXp);
+        boolean cumulativeXpModel = safeLevel > 1 && safeXp >= User.getXpForLevel(safeLevel);
+
+        int xpNeededForNext;
+        int xpProgress;
+        if (cumulativeXpModel) {
+            int currentThreshold = User.getXpForLevel(safeLevel);
+            int nextThreshold = User.getXpForLevel(safeLevel + 1);
+            xpNeededForNext = Math.max(1, nextThreshold - currentThreshold);
+            xpProgress = Math.min(Math.max(0, safeXp - currentThreshold), xpNeededForNext);
         } else {
-            xpProgress = Math.min(xpProgress, xpNeededForNext);
+            xpNeededForNext = Math.max(1, User.getXpForLevel(safeLevel));
+            xpProgress = Math.min(safeXp, xpNeededForNext);
         }
+        xpForNextLevel = xpNeededForNext;
         
         xpText.setText(xpProgress + " / " + xpNeededForNext + " XP");
         coinsText.setText(String.valueOf(coins));
@@ -282,7 +251,6 @@ public class HomeFragment extends Fragment {
         updateProgressBar(xpProgressBar, Math.min(xpProgressPercent, 1.0f));
         
         // Quick Stats
-        tasksCompletedText.setText(tasksCompleted + "/" + totalTasks);
         streakText.setText(String.valueOf(streak));
         
         // Boss
@@ -292,9 +260,110 @@ public class HomeFragment extends Fragment {
         
         float hpProgress = (float) bossHp / bossMaxHp;
         updateProgressBar(bossHpBar, hpProgress);
-        
-        // Tasks empty state
-        emptyTasksCard.setVisibility(totalTasks == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    private void startTaskStreakListener(String userId) {
+        if (tasksListener != null) {
+            tasksListener.remove();
+        }
+
+        tasksListener = db.collection("tasks")
+                .whereEqualTo("userId", userId)
+                .addSnapshotListener((snapshots, error) -> {
+                    if (error != null || snapshots == null) return;
+
+                    streak = calculateCurrentStreakFromTasks(snapshots.getDocuments());
+                    streakText.setText(String.valueOf(streak));
+                });
+    }
+
+    private int calculateCurrentStreakFromTasks(List<DocumentSnapshot> docs) {
+        if (docs == null || docs.isEmpty()) return 0;
+
+        Map<Long, DayOutcome> outcomesByDay = new TreeMap<>();
+        for (DocumentSnapshot doc : docs) {
+            String status = doc.getString("status");
+            if (!Task.STATUS_COMPLETED.equals(status) && !Task.STATUS_FAILED.equals(status)) {
+                continue;
+            }
+
+            long taskDay = getTaskDay(doc);
+            if (taskDay <= 0) continue;
+
+            DayOutcome outcome = outcomesByDay.get(taskDay);
+            if (outcome == null) outcome = new DayOutcome();
+
+            if (Task.STATUS_FAILED.equals(status)) {
+                outcome.failed = true;
+            } else if (Task.STATUS_COMPLETED.equals(status)) {
+                outcome.completed = true;
+            }
+            outcomesByDay.put(taskDay, outcome);
+        }
+
+        if (outcomesByDay.isEmpty()) return 0;
+
+        List<Long> days = new ArrayList<>(outcomesByDay.keySet());
+        Collections.sort(days, Collections.reverseOrder());
+
+        long today = getDayStart(System.currentTimeMillis());
+        int currentStreak = 0;
+        boolean started = false;
+
+        for (Long day : days) {
+            if (day == null || day > today) continue;
+
+            DayOutcome outcome = outcomesByDay.get(day);
+            if (outcome == null) continue;
+
+            if (!started) {
+                started = true;
+                if (outcome.failed) return 0;
+                if (outcome.completed) currentStreak++;
+                continue;
+            }
+
+            if (outcome.failed) break;
+            if (outcome.completed) currentStreak++;
+        }
+
+        return currentStreak;
+    }
+
+    private long getTaskDay(DocumentSnapshot doc) {
+        long dueDate = getLongValue(doc, "dueDate");
+        if (dueDate > 0) return getDayStart(dueDate);
+
+        long completedDate = getLongValue(doc, "completedDate");
+        if (completedDate > 0) return getDayStart(completedDate);
+
+        long createdAt = getLongValue(doc, "createdAt");
+        if (createdAt > 0) return getDayStart(createdAt);
+
+        return -1L;
+    }
+
+    private long getLongValue(DocumentSnapshot doc, String field) {
+        Object value = doc.get(field);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return 0L;
+    }
+
+    private long getDayStart(long millis) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(millis);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
+    }
+
+    private static final class DayOutcome {
+        boolean completed;
+        boolean failed;
     }
     
     private void updateProgressBar(View progressBar, float progress) {
@@ -313,61 +382,5 @@ public class HomeFragment extends Fragment {
                 progressBar.setLayoutParams(newParams);
             });
         }
-    }
-    
-    private void attackBoss() {
-        // Simple attack mechanic
-        int damage = 10 + (currentLevel * 2); // Base damage + level bonus
-        bossHp = Math.max(0, bossHp - damage);
-        
-        // Show attack feedback
-        Toast.makeText(getActivity(), "⚔️ Zadao si " + damage + " štete!", Toast.LENGTH_SHORT).show();
-        
-        // Update UI
-        bossHpText.setText(bossHp + "/" + bossMaxHp);
-        float hpProgress = (float) bossHp / bossMaxHp;
-        updateProgressBar(bossHpBar, hpProgress);
-        
-        // Check if boss defeated
-        if (bossHp <= 0) {
-            defeatBoss();
-        }
-    }
-    
-    private void defeatBoss() {
-        // Calculate rewards
-        int coinsReward = 200 + (bossLevel * 40); // 200 base + 20% per level
-        int xpReward = 50 * bossLevel;
-        
-        coins += coinsReward;
-        currentXp += xpReward;
-        
-        // Check for level up
-        if (currentXp >= xpForNextLevel) {
-            levelUp();
-        }
-        
-        // Show victory message
-        Toast.makeText(getActivity(), 
-            "🎉 Pobeda! +" + coinsReward + " novčića, +" + xpReward + " XP!", 
-            Toast.LENGTH_LONG).show();
-        
-        // Reset boss (next level)
-        bossLevel++;
-        bossMaxHp = (int) (bossMaxHp * 2.5); // HP formula: HP * 2 + HP/2
-        bossHp = bossMaxHp;
-        bossName = "Zmaj Nivo " + bossLevel;
-        
-        updateUI();
-    }
-    
-    private void levelUp() {
-        currentXp -= xpForNextLevel;
-        currentLevel++;
-        xpForNextLevel = (int) (xpForNextLevel * 2.5 / 100) * 100; // Round to 100
-        
-        Toast.makeText(getActivity(), 
-            "🎊 LEVEL UP! Sada si nivo " + currentLevel + "!", 
-            Toast.LENGTH_LONG).show();
     }
 }
